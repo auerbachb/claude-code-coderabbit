@@ -7,7 +7,8 @@ A battle-tested `CLAUDE.md` configuration that teaches [Claude Code](https://doc
 When you drop this `CLAUDE.md` into your project (or `~/.claude/`), Claude Code will automatically:
 
 - **Plan with CodeRabbit** — When starting a GitHub issue, Claude kicks off `@coderabbitai plan` asynchronously, builds its own plan in parallel, then merges the two into a single implementation plan.
-- **Review loop** — After every push, Claude polls for CodeRabbit's review comments, fixes all valid findings, replies to every thread, and re-requests review until the PR is clean.
+- **Review locally first** — After coding, Claude runs CodeRabbit reviews locally via the CLI/plugin (`/coderabbit:review`), fixes all findings, and repeats until clean — all before pushing or creating a PR. No polling, no PR noise, instant feedback.
+- **GitHub review as safety net** — After pushing, CodeRabbit still auto-reviews on GitHub. Claude polls for any findings the local review missed and resolves them via the existing GitHub-based loop.
 - **Handle rate limits** — Batches fixes into single commits, respects CodeRabbit's 8-reviews/hour and 50-chats/hour Pro tier limits, and backs off when throttled.
 - **Verify acceptance criteria** — Before offering to merge, Claude reads every checkbox in the PR's Test Plan section, verifies each against the actual code, and checks them off.
 - **Squash and merge** — Clean PRs get squash-merged with branch cleanup, only after user confirmation.
@@ -44,6 +45,16 @@ Claude Code loads `CLAUDE.md` from the project root first, then `~/.claude/CLAUD
 - [Claude Code](https://docs.anthropic.com/en/docs/claude-code) installed and authenticated
 - [GitHub CLI (`gh`)](https://cli.github.com/) installed and authenticated
 - [CodeRabbit](https://coderabbit.ai) installed on your GitHub repo (free or Pro tier)
+- [CodeRabbit CLI](https://docs.coderabbit.ai/cli) installed and authenticated:
+  ```bash
+  curl -fsSL https://cli.coderabbit.ai/install.sh | sh
+  coderabbit auth login
+  ```
+- CodeRabbit Claude Code plugin installed (run inside Claude Code):
+  ```
+  /plugin marketplace update
+  /plugin install coderabbit
+  ```
 
 ## What's in the config
 
@@ -51,19 +62,20 @@ Claude Code loads `CLAUDE.md` from the project root first, then `~/.claude/CLAUD
 |---|---|
 | **PR & Issue Workflow** | Branch naming, squash-merge policy, issue linking, acceptance criteria rules |
 | **Issue Planning Flow** | 7-step flow: read issue, kick off CR plan, build Claude's plan, merge plans, post final plan, start coding |
-| **CodeRabbit Review Loop** | Polling strategy, rate-limit-aware behavior, feedback processing, comment thread resolution |
+| **Local CodeRabbit Review Loop** | Primary review workflow — runs CR locally via CLI/plugin before pushing, instant feedback, no PR noise |
+| **GitHub CodeRabbit Review Loop (Fallback)** | Safety net after PR creation — polling, rate-limit-aware behavior, feedback processing, comment thread resolution |
 | **Completion Flow** | 2 consecutive clean reviews, AC verification, user-confirmed merge |
 | **Subagent Context** | Ensures spawned subagents inherit the workflow rules |
 
 ## Key design decisions
 
-**Polling, not webhooks.** Claude Code runs in your terminal, so it polls GitHub's API for CodeRabbit comments. The config specifies 60-second intervals with a 10-minute timeout before re-triggering review.
+**Local first, GitHub as safety net.** The CodeRabbit CLI runs reviews instantly in your terminal — no pushing, no polling, no PR noise. Claude fixes everything locally before the PR is ever created. The GitHub-based review loop stays as a fallback for anything the local review misses (cross-file interactions, CI-only context, etc.).
 
-**Batch fixes, single push.** Every push consumes a CodeRabbit review from your hourly quota. The config instructs Claude to fix all findings from a round in one commit rather than pushing per-finding.
+**Batch fixes, single push.** If the GitHub fallback loop does find issues, every push consumes a CodeRabbit review from your hourly quota. The config instructs Claude to fix all findings from a round in one commit rather than pushing per-finding.
 
 **Verify before merge.** Claude won't offer to merge until it has read the source files and confirmed every acceptance criteria checkbox. This catches regressions introduced during the CR fix loop.
 
-**Two consecutive clean reviews.** A single clean pass isn't enough — the config requires two consecutive `@coderabbitai full review` requests with no findings before considering the PR ready.
+**Two consecutive clean reviews.** Both the local and GitHub loops require two consecutive clean passes before proceeding. Locally, this means two `/coderabbit:review` runs with no findings. On GitHub, two `@coderabbitai full review` requests with no findings.
 
 ## Customizing
 
@@ -76,8 +88,35 @@ The config is plain Markdown. Edit it to match your workflow:
 
 ## How the review loop works
 
+### Phase 1: Local review (primary)
+
 ```
-Push to PR branch
+Finish coding on feature branch
+       |
+       v
+Run /coderabbit:review --base main
+       |
+       v
+CR returns findings? ──No──> Run review once more to confirm
+       |                              |
+      Yes                        Still clean?
+       |                              |
+       v                             Yes
+Fix all valid findings               |
+       |                              v
+       v                    Local review loop done ✓
+Run /coderabbit:review again          |
+       |                              v
+       v                    Push branch & create PR
+Repeat until clean                    |
+                                      v
+                            Enter Phase 2 (below)
+```
+
+### Phase 2: GitHub review (fallback)
+
+```
+PR created, CR auto-reviews on GitHub
        |
        v
 Poll for CR comments (60s intervals, 10 min timeout)
@@ -91,13 +130,10 @@ CR posts findings? ──No──> Trigger @coderabbitai full review
 Verify each finding against code   No response? Tell user
        |
        v
-Fix all valid findings in one commit
+Fix all findings in one commit, push
        |
        v
 Reply to every CR comment thread
-       |
-       v
-Push (consumes 1 review from quota)
        |
        v
 Poll again... repeat until clean
@@ -116,14 +152,20 @@ Ask user: merge or review diff first?
 
 ## FAQ
 
+**What's the difference between local and GitHub reviews?**
+Local reviews run the CodeRabbit CLI in your terminal via `/coderabbit:review`. They're instant, produce no PR noise, and don't consume your GitHub-based review quota. GitHub reviews happen automatically after you create a PR — CodeRabbit comments directly on the PR, and Claude polls the GitHub API to process findings. The local loop is the primary workflow; GitHub is the safety net.
+
+**Do local reviews count against rate limits?**
+Local CLI reviews are separate from GitHub PR reviews. The 8-reviews/hour and 50-chats/hour limits apply to GitHub-based reviews. By catching issues locally first, you'll consume far fewer GitHub reviews.
+
 **Does this work with CodeRabbit's free tier?**
-Yes, but the rate limits in the config are tuned for Pro (8 reviews/hour, 50 chats/hour). Free tier limits are lower — you may want to increase polling timeouts.
+Yes. The CLI and Claude Code plugin work on the free tier. The GitHub-based rate limits in the config are tuned for Pro (8 reviews/hour, 50 chats/hour). Free tier limits are lower — you may want to increase polling timeouts for the GitHub fallback loop.
 
 **Can I use this without CodeRabbit?**
 Yes. The config auto-detects CodeRabbit. Without it, you still get the PR workflow, branch naming, acceptance criteria verification, and squash-merge flow.
 
 **Does Claude Code actually poll in a loop?**
-Yes. The `CLAUDE.md` instructions tell Claude to use `gh api` calls in a polling loop. Claude executes shell commands via its Bash tool and tracks state (like the highest comment ID seen) across iterations.
+Only for the GitHub fallback. The `CLAUDE.md` instructions tell Claude to use `gh api` calls in a polling loop for PR-based reviews. The local review loop doesn't need polling — `/coderabbit:review` returns results directly.
 
 **What if CodeRabbit and Claude disagree?**
 During planning, the config tells Claude to pick the best ideas from both plans. During review, Claude verifies every CR finding against the actual code before applying it — it won't blindly apply suggestions that would break things.

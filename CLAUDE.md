@@ -58,11 +58,60 @@ When starting work on a GitHub issue, always follow this flow before writing any
 
 ### 7. Start coding
 - Create the feature branch (`issue-N-short-description`) and begin implementation
+- When implementation is done, run the **Local CodeRabbit Review Loop** (below) before pushing
 
 ---
 
-## CodeRabbit Review Loop
+## Local CodeRabbit Review Loop (Primary)
+
+This is the **primary** review workflow. Run CodeRabbit locally in your terminal to catch issues **before** pushing or creating a PR. This is faster than GitHub-based reviews (instant feedback, no polling), produces no noise on the PR, and doesn't consume your GitHub-based CR review quota.
+
+### Prerequisites
+- **CodeRabbit CLI** installed and authenticated:
+  ```
+  curl -fsSL https://cli.coderabbit.ai/install.sh | sh
+  coderabbit auth login
+  ```
+- **CodeRabbit Claude Code plugin** installed:
+  ```
+  /plugin marketplace update
+  /plugin install coderabbit
+  ```
+
+### When to run
+- After finishing implementation on a feature branch, **before pushing or creating a PR**
+- After making any significant changes during development (optional — use judgment on whether a local review pass is worthwhile mid-development)
+
+### How to run
+1. **Preferred:** Use the `/coderabbit:review` slash command inside Claude Code
+   - `/coderabbit:review` — review all changes
+   - `/coderabbit:review uncommitted` — review only uncommitted changes
+   - `/coderabbit:review committed` — review only committed changes
+   - `/coderabbit:review --base main` — review all changes on the branch vs. main
+2. **Alternative:** Run the CLI directly via Bash: `coderabbit review --prompt-only --type committed`
+
+### Fix loop
+1. Run `/coderabbit:review --base main` to review the full branch diff against main
+2. Parse the findings — verify each against the actual code before fixing
+3. Fix **all valid findings**
+4. Run `/coderabbit:review --base main` again
+5. Repeat until CR returns no findings
+
+### Exit criteria
+- **Two consecutive clean local reviews** with no findings
+- Once clean, commit all changes and push the branch
+
+### Then: push and create the PR
+- After the local review loop passes, push the branch and create the PR
+- CodeRabbit will still auto-review on GitHub — enter the **GitHub CodeRabbit Review Loop** below as a safety net
+- Because you already cleaned up locally, the GitHub review should find nothing or very little
+
+---
+
+## GitHub CodeRabbit Review Loop (Fallback)
 - note code rabbit is called cr or CR for short
+
+> **This is the fallback review workflow.** It runs after you push and create a PR. If the local review loop above was thorough, CR should find few or no issues here. But edge cases exist (e.g., CI-only context, cross-file interactions the local review missed), so always let this loop run.
 
 **Prerequisite:** Before entering this loop, check if the repo uses CodeRabbit (look for `.coderabbit.yaml` at the repo root, or check if CodeRabbit has ever commented on PRs via `gh api repos/{owner}/{repo}/pulls --jq '.[].number' | head -5 | xargs -I{} gh api repos/{owner}/{repo}/pulls/{}/reviews --jq '.[].user.login' | grep -q coderabbitai`). If CodeRabbit is not configured for the repo, skip this workflow.
 
@@ -133,4 +182,4 @@ After pushing a commit to a PR, automatically enter the CR review loop:
 
 ## Subagent Context
 
-When spawning subagents via the Task tool, **always include the relevant CLAUDE.md instructions in the subagent's prompt.** Subagents do not automatically inherit CLAUDE.md context. If a subagent needs to follow any convention defined here (CR polling, branching rules, AC verification, commit style, etc.), paste or summarize those specific sections into the subagent prompt. Without this, subagents will improvise their own approach instead of following the documented protocol.
+When spawning subagents via the Task tool, **always include the relevant CLAUDE.md instructions in the subagent's prompt.** Subagents do not automatically inherit CLAUDE.md context. If a subagent needs to follow any convention defined here (local CR review loop, GitHub CR polling, branching rules, AC verification, commit style, etc.), paste or summarize those specific sections into the subagent prompt. Without this, subagents will improvise their own approach instead of following the documented protocol.
