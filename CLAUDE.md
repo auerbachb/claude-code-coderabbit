@@ -81,6 +81,7 @@ After pushing a commit to a PR, automatically enter the CR review loop:
 
 ### Polling
 - Poll every 60 seconds for new CodeRabbit comments/reviews on the PR
+- **⚠️ Always use `per_page=100` on all GitHub API calls.** The default `per_page=30` will silently miss reviews/comments when a PR exceeds 30 total. Example: `gh api repos/{owner}/{repo}/pulls/{N}/reviews?per_page=100`. This applies to both `/reviews` and `/comments` endpoints.
 - **Poll BOTH endpoints every cycle:** `pulls/{N}/reviews` (for summary reviews) AND `pulls/{N}/comments` (for inline findings). CR sometimes posts new inline comments without incrementing the review count — checking only `/reviews` will miss them.
 - **⚠️ CR's GitHub username is `coderabbitai[bot]` (with the `[bot]` suffix).** Always filter by `.user.login == "coderabbitai[bot]"` — NOT bare `coderabbitai`. Using the wrong username will silently miss all CR comments.
 - Track the **highest comment ID** seen so far. Any comment from `coderabbitai[bot]` with an ID greater than the watermark is a new finding that needs attention.
