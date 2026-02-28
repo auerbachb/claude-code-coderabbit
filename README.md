@@ -58,7 +58,7 @@ Claude Code loads `CLAUDE.md` from the project root first, then `~/.claude/CLAUD
 | **PR & Issue Workflow** | Branch naming, squash-merge policy, issue linking, acceptance criteria rules |
 | **Issue Planning Flow** | 7-step flow: read issue, kick off CR plan, build Claude's plan, merge plans, post final plan, start coding |
 | **Local CodeRabbit Review Loop** | Primary review workflow — runs CR locally via CLI before pushing, instant feedback, no PR noise |
-| **GitHub CodeRabbit Review Loop (Fallback)** | Safety net after PR creation — polling, rate-limit-aware behavior, feedback processing, comment thread resolution |
+| **GitHub CodeRabbit Review Loop (Fallback)** | Safety net after PR creation — three-endpoint polling (`issues/` + `pulls/reviews` + `pulls/comments` + commit status checks), rate-limit-aware behavior, feedback processing, comment thread resolution |
 | **Completion Flow** | 2 consecutive clean reviews, AC verification, user-confirmed merge |
 | **Subagent Context** | Ensures spawned subagents inherit the workflow rules |
 
@@ -161,6 +161,9 @@ Yes. The config auto-detects CodeRabbit. Without it, you still get the PR workfl
 
 **Does Claude Code actually poll in a loop?**
 Only for the GitHub fallback. The `CLAUDE.md` instructions tell Claude to use `gh api` calls in a polling loop for PR-based reviews. The local review loop doesn't need polling — `coderabbit review` returns results directly.
+
+**Why does Claude Code keep polling and never see CR's response?**
+This is usually a missing-endpoint bug. GitHub has **three** distinct comment endpoints for PRs, and CR's main review summary and "✅ Actions performed" ack are posted as **issue comments** (`issues/{N}/comments`), not as pull request reviews or inline code comments. If you only poll `pulls/{N}/reviews` and `pulls/{N}/comments`, you'll never see CR's response. The config instructs Claude to poll all three endpoints plus the commit status check (`commits/{SHA}/check-runs`) every cycle.
 
 **What if CodeRabbit and Claude disagree?**
 During planning, the config tells Claude to pick the best ideas from both plans. During review, Claude verifies every CR finding against the actual code before applying it — it won't blindly apply suggestions that would break things.

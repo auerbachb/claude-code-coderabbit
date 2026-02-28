@@ -123,10 +123,15 @@ After pushing a commit to a PR, automatically enter the CR review loop:
 
 ### Polling
 - Poll every 60 seconds for new CodeRabbit comments/reviews on the PR
-- **⚠️ Always use `per_page=100` on all GitHub API calls.** The default `per_page=30` will silently miss reviews/comments when a PR exceeds 30 total. Example: `gh api repos/{owner}/{repo}/pulls/{N}/reviews?per_page=100`. This applies to both `/reviews` and `/comments` endpoints.
-- **Poll BOTH endpoints every cycle:** `pulls/{N}/reviews` (for summary reviews) AND `pulls/{N}/comments` (for inline findings). CR sometimes posts new inline comments without incrementing the review count — checking only `/reviews` will miss them.
+- **⚠️ Always use `per_page=100` on all GitHub API calls.** The default `per_page=30` will silently miss reviews/comments when a PR exceeds 30 total. Example: `gh api repos/{owner}/{repo}/pulls/{N}/reviews?per_page=100`. This applies to all three endpoints below.
+- **Poll ALL THREE endpoints every cycle.** These are distinct GitHub API endpoints that return different data:
+  1. `repos/{owner}/{repo}/pulls/{N}/reviews` — review objects (approve, request changes, review-level comments)
+  2. `repos/{owner}/{repo}/pulls/{N}/comments` — inline comments on specific lines of code in the diff
+  3. `repos/{owner}/{repo}/issues/{N}/comments` — **main PR conversation thread** (where CR posts its summary review, the "✅ Actions performed" ack, and general findings)
+  - **⚠️ The third endpoint (`issues/` not `pulls/`) is critical.** CR's review summary, its "✅ Actions performed" ack after `@coderabbitai full review`, and most of its substantive feedback are posted as issue comments — NOT as pull request reviews or inline comments. Missing this endpoint means you will never see CR's response and will poll indefinitely.
+- **Also check the commit status** to detect review completion: `repos/{owner}/{repo}/commits/{SHA}/check-runs` (filter for `name == "CodeRabbit"` or `app.slug == "coderabbitai"`). When CR's check shows `status: "completed"` with `conclusion: "success"`, the review is done. This is especially useful for detecting clean passes where CR found no issues and may not post additional comments.
 - **⚠️ CR's GitHub username is `coderabbitai[bot]` (with the `[bot]` suffix).** Always filter by `.user.login == "coderabbitai[bot]"` — NOT bare `coderabbitai`. Using the wrong username will silently miss all CR comments.
-- Track the **highest comment ID** seen so far. Any comment from `coderabbitai[bot]` with an ID greater than the watermark is a new finding that needs attention.
+- Track the **highest comment ID** seen so far across all three endpoints. Any comment from `coderabbitai[bot]` with an ID greater than the watermark is a new finding that needs attention.
 - If CR responds, process immediately
 - **Poll for at least 10 minutes** (10 cycles) before giving up. CR regularly takes 6-8 minutes to review larger diffs — a 5-minute timeout will miss reviews that arrive at minute 6-7. Only after 10 minutes with no response, post `@coderabbitai full review` and resume polling for another **5 minutes** (5 cycles). Total wait ceiling is ~15 minutes. This second shorter window counts against the 8/hour review limit — be aware.
 
@@ -150,7 +155,7 @@ After pushing a commit to a PR, automatically enter the CR review loop:
 
 **Step 1 — Confirm CR is clean (2 consecutive clean full reviews):**
 - If CR responds with no findings after a round of fixes, post `@coderabbitai full review` one more time to confirm.
-- **How to detect a clean pass:** When `@coderabbitai full review` is triggered, CR posts an issue comment with "✅ Actions performed — Full review triggered." If after that ack there are **no new inline comments or review findings** (check both `/pulls/{N}/comments` and `/pulls/{N}/reviews`), that counts as a clean pass. You do NOT need to keep polling for the full 10 minutes once CR's ack is present and no findings follow within ~2-3 minutes.
+- **How to detect a clean pass:** When `@coderabbitai full review` is triggered, CR posts an **issue comment** (on `issues/{N}/comments`, NOT `pulls/{N}/comments`) with "✅ Actions performed — Full review triggered." If after that ack there are **no new comments across any of the three endpoints** (`issues/{N}/comments`, `pulls/{N}/comments`, and `pulls/{N}/reviews`) and the commit status check for CodeRabbit shows `completed` with `conclusion: "success"`, that counts as a clean pass. You do NOT need to keep polling for the full 10 minutes once CR's ack is present and no findings follow within ~2-3 minutes.
 - If CR has no findings on **2 consecutive** `full review` requests, the PR is clean. Proceed immediately to Step 2.
 
 **Step 2 — Verify every Test Plan checkbox (MANDATORY — do NOT skip):**
