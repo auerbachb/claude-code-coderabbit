@@ -163,7 +163,7 @@ Yes. The config auto-detects CodeRabbit. Without it, you still get the PR workfl
 Only for the GitHub fallback. The `CLAUDE.md` instructions tell Claude to use `gh api` calls in a polling loop for PR-based reviews. The local review loop doesn't need polling — `coderabbit review` returns results directly.
 
 **Why does Claude Code keep polling and never see CR's response?**
-This is usually a missing-endpoint bug. GitHub has **three** distinct comment endpoints for PRs, and CR's main review summary and "✅ Actions performed" ack are posted as **issue comments** (`issues/{N}/comments`), not as pull request reviews or inline code comments. If you only poll `pulls/{N}/reviews` and `pulls/{N}/comments`, you'll never see CR's response. The config instructs Claude to poll all three endpoints plus the commit status check (`commits/{SHA}/check-runs`) every cycle.
+This usually happens on clean passes (no findings). When CR has findings, it posts review objects on `pulls/{N}/reviews` which Claude sees. But on clean passes, CR only posts a "✅ Actions performed" ack as an issue comment (`issues/{N}/comments` — a different endpoint) and sets the CI check to green. If you're only polling `pulls/{N}/reviews` and `pulls/{N}/comments`, you'll miss both signals and poll forever. The config instructs Claude to poll all three comment endpoints plus the commit status check (`commits/{SHA}/check-runs` for "CodeRabbit — Review completed") every cycle.
 
 **What if CodeRabbit and Claude disagree?**
 During planning, the config tells Claude to pick the best ideas from both plans. During review, Claude verifies every CR finding against the actual code before applying it — it won't blindly apply suggestions that would break things.
