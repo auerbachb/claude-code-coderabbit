@@ -72,29 +72,22 @@ This is the **primary** review workflow. Run CodeRabbit locally in your terminal
   curl -fsSL https://cli.coderabbit.ai/install.sh | sh
   coderabbit auth login
   ```
-- **CodeRabbit Claude Code plugin** installed:
-  ```
-  /plugin marketplace update
-  /plugin install coderabbit
-  ```
 
 ### When to run
 - After finishing implementation on a feature branch, **before pushing or creating a PR**
 - After making any significant changes during development (optional — use judgment on whether a local review pass is worthwhile mid-development)
 
 ### How to run
-1. **Preferred:** Use the `/coderabbit:review` slash command inside Claude Code
-   - `/coderabbit:review` — review all changes
-   - `/coderabbit:review uncommitted` — review only uncommitted changes
-   - `/coderabbit:review committed` — review only committed changes
-   - `/coderabbit:review --base main` — review all changes on the branch vs. main
-2. **Alternative:** Run the CLI directly via Bash: `coderabbit review --prompt-only --type committed`
+Run the CLI directly via Bash from the repo root:
+- `coderabbit review --prompt-only` — review all changes (prompt-only mode is optimized for AI agent parsing)
+- `coderabbit review --prompt-only --type uncommitted` — review only uncommitted changes
+- `coderabbit review --prompt-only --type committed` — review only committed changes
 
 ### Fix loop
-1. Run `/coderabbit:review --base main` to review the full branch diff against main
+1. Run `coderabbit review --prompt-only` to review changes
 2. Parse the findings — verify each against the actual code before fixing
 3. Fix **all valid findings**
-4. Run `/coderabbit:review --base main` again
+4. Run `coderabbit review --prompt-only` again
 5. Repeat until CR returns no findings
 
 ### Exit criteria
