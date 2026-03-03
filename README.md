@@ -60,6 +60,7 @@ Claude Code loads `CLAUDE.md` from the project root first, then `~/.claude/CLAUD
 | **Local CodeRabbit Review Loop** | Primary review workflow — runs CR locally via CLI before pushing, instant feedback, no PR noise |
 | **GitHub CodeRabbit Review Loop (Fallback)** | Safety net after PR creation — three-endpoint polling (`issues/` + `pulls/reviews` + `pulls/comments` + commit status checks), rate-limit-aware behavior, feedback processing, comment thread resolution |
 | **Completion Flow** | 2 consecutive clean reviews, AC verification, user-confirmed merge |
+| **Self-Review Fallback** | When CR is unavailable (timeout, rate-limited, down), Claude reviews the diff itself so the flow doesn't stall |
 | **Subagent Context** | Ensures spawned subagents inherit the workflow rules |
 
 ## Key design decisions
@@ -161,8 +162,11 @@ Local CLI reviews are separate from GitHub PR reviews. The 8-reviews/hour and 50
 **Does this work with CodeRabbit's free tier?**
 Yes. The CLI and Claude Code plugin work on the free tier. The GitHub-based rate limits in the config are tuned for Pro (8 reviews/hour, 50 chats/hour). Free tier limits are lower — you may want to increase polling timeouts for the GitHub fallback loop.
 
+**What happens when CodeRabbit is slow or down?**
+Both the local and GitHub review loops have hard timeouts (2 minutes for CLI, 15 minutes for GitHub polling). When CR times out, Claude runs a self-review — checking the diff for bugs, security issues, error handling, types, and edge cases. This prevents sessions from stalling or timing out while waiting for CR. If CR responds later (e.g., comments on the PR after the timeout), those findings are processed in the next round.
+
 **Can I use this without CodeRabbit?**
-Yes. The config auto-detects CodeRabbit. Without it, you still get the PR workflow, branch naming, acceptance criteria verification, and squash-merge flow.
+Yes. The config auto-detects CodeRabbit. Without it, Claude uses the self-review fallback and you still get the PR workflow, branch naming, acceptance criteria verification, and squash-merge flow.
 
 **Does Claude Code actually poll in a loop?**
 Only for the GitHub fallback. The `CLAUDE.md` instructions tell Claude to use `gh api` calls in a polling loop for PR-based reviews. The local review loop doesn't need polling — `coderabbit review` returns results directly.

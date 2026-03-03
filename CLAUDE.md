@@ -108,8 +108,12 @@ Run the CLI directly via Bash from the repo root:
 4. Run `coderabbit review --prompt-only` again
 5. Repeat until CR returns no findings
 
+### Timeout & fallback
+- If `coderabbit review` hangs for more than **2 minutes** or errors out, skip it and run a **self-review** instead (see below).
+- Do not retry more than once. If CR CLI fails twice, it's down — move on with self-review.
+
 ### Exit criteria
-- **Two consecutive clean local reviews** with no findings
+- **Two consecutive clean local reviews** with no findings (or two clean self-reviews if CR CLI is unavailable)
 - Once clean, commit all changes and push the branch
 
 ### Then: push and create the PR
@@ -154,6 +158,11 @@ After pushing a commit to a PR, automatically enter the CR review loop:
 - If CR responds, process immediately
 - **Poll for at least 10 minutes** (10 cycles) before giving up. CR regularly takes 6-8 minutes to review larger diffs — a 5-minute timeout will miss reviews that arrive at minute 6-7. Only after 10 minutes with no response, post `@coderabbitai full review` and resume polling for another **5 minutes** (5 cycles). Total wait ceiling is ~15 minutes. This second shorter window counts against the 8/hour review limit — be aware.
 
+### Timeout & Fallback
+- **Hard timeout: 15 minutes total.** If CR has not responded after 15 minutes of polling (including the retry), stop waiting. Do NOT keep polling — it wastes tokens and risks session timeout.
+- When CR times out, run a **self-review** instead (see below) and proceed with the flow.
+- Tell the user: "CR didn't respond within 15 minutes. I ran a self-review instead. CR may still comment on the PR later — check back after merge if needed."
+
 ### Processing CR Feedback
 1. Fetch the latest CR comments via `gh api`
 2. Parse each finding from CR's summary/review
@@ -197,6 +206,35 @@ After pushing a commit to a PR, automatically enter the CR review loop:
 **Step 3 — Ask the user about merging:**
 - Ask the user: "CR is clean, all AC verified and checked off. Want me to squash and merge and delete the branch, or do you want to review the diff yourself first?"
 - Always use **squash and merge** (never regular merge or rebase)
+
+---
+
+## Self-Review Fallback
+
+When CodeRabbit is unavailable (CLI timeout, GitHub timeout, rate-limited, or not configured), Claude performs its own review as a fallback. This is not a replacement for CR — it's a safety net so the flow doesn't break.
+
+### When to trigger
+- CR CLI hangs or errors out twice during the local review loop
+- GitHub CR polling exceeds the 15-minute hard timeout
+- CR is rate-limited and not responding after the retry protocol
+- CR is not configured for the repo
+
+### How to self-review
+Review the full diff (`git diff main...HEAD`) and check for:
+1. **Bugs** — logic errors, off-by-one, null/undefined access, race conditions
+2. **Security** — SQL injection, XSS, secrets in code, unsafe input handling
+3. **Error handling** — missing try/catch, unhandled promise rejections, silent failures
+4. **Types** — wrong types, missing null checks, implicit any
+5. **Naming & clarity** — misleading names, dead code, confusing control flow
+6. **Edge cases** — empty arrays, zero values, missing fields, boundary conditions
+
+### Output format
+List findings the same way you would process CR findings: verify each against the code, fix valid issues, and note what you checked. If no issues found, that counts as a clean pass for the exit criteria.
+
+### Important
+- Self-review is a **fallback**, not a substitute. When CR is available, always prefer it.
+- Self-review counts toward the "two consecutive clean reviews" exit criteria only when CR is genuinely unavailable.
+- If CR comes back online mid-flow (e.g., it comments on the PR after you've moved on), process those findings in the next round.
 
 ---
 
