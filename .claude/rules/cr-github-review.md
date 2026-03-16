@@ -31,12 +31,12 @@ After pushing a commit to a PR, automatically enter the CR review loop:
   3. `repos/{owner}/{repo}/issues/{N}/comments` — **main PR conversation thread** (where CR posts its summary review, the "Actions performed" ack, and general findings)
   - **The third endpoint (`issues/` not `pulls/`) is important.** When CR reviews with findings, it posts review objects on `pulls/{N}/reviews` (which you'll see). But CR also posts its summary and the "Actions performed" ack as issue comments on `issues/{N}/comments`. Missing this endpoint means you'll catch reviews with findings but miss the ack and summary — causing indefinite polling on **clean passes** where CR has no findings to post as review objects.
 - **Check the commit status on EVERY poll cycle** — this serves two purposes:
-  ```
+  ```bash
   gh api "repos/{owner}/{repo}/commits/{SHA}/check-runs" \
     --jq '.check_runs[] | select(.name == "CodeRabbit") | {name, status, conclusion, title: .output.title}'
   ```
   If check-runs returns empty for CodeRabbit, fall back to the commit statuses endpoint:
-  ```
+  ```bash
   gh api "repos/{owner}/{repo}/commits/{SHA}/statuses" \
     --jq '.[] | select(.context | test("CodeRabbit"; "i")) | {context, state, description}'
   ```
@@ -78,15 +78,15 @@ GitHub does not auto-resolve PR review comments when the fix touches different l
 **How to resolve a comment thread after fixing it:**
 1. **Reply to the thread** confirming the fix (this is already required — see processing steps below)
 2. **Resolve the thread** via the GitHub API:
-   ```
+   ```bash
    gh api graphql -f query='mutation { minimizeComment(input: {subjectId: "<node_id>", classifier: RESOLVED}) { minimizedComment { isMinimized } } }'
    ```
    Or if the comment is a pull request review thread, use:
-   ```
+   ```bash
    gh api graphql -f query='mutation { resolveReviewThread(input: {threadId: "<thread_node_id>"}) { thread { isResolved } } }'
    ```
    To get the thread ID, fetch the review threads:
-   ```
+   ```bash
    gh api graphql -f query='query { repository(owner: "{owner}", name: "{repo}") { pullRequest(number: {N}) { reviewThreads(first: 100) { nodes { id isResolved comments(first: 1) { nodes { body author { login } } } } } } } }'
    ```
 3. **Check that all threads are resolved** before requesting a new review. Unresolved threads signal to CR (and to human reviewers) that work is still outstanding.

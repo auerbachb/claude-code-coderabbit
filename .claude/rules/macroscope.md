@@ -63,6 +63,7 @@ A Macroscope review is **clean** (no findings) when:
 A clean Macroscope pass counts as 1 of the 2 required reviews for merge readiness (but at least 1 must come from CodeRabbit).
 
 ## Important constraints
+
 - **Never run both reviewers simultaneously on the same push.** Trigger Macroscope only after CR fails to deliver a review within 8 minutes.
 - **Macroscope has no CLI.** It only operates via GitHub PR comments — there is no local pre-push review fallback from Macroscope.
 - **Macroscope counts as 1 of the 2 required clean reviews**, but at least 1 must come from CodeRabbit (see Completion criteria in GitHub review rules).
@@ -86,11 +87,13 @@ After fixing Macroscope findings and pushing a new commit:
 When CodeRabbit is unavailable and Macroscope cannot help (non-rate-limit timeout, CLI failure, neither tool configured), Claude performs its own review as a last-resort fallback. This is not a replacement for CR or Macroscope — it's a safety net so the flow doesn't break.
 
 ### When to trigger
+
 - CR CLI hangs or errors out twice during the local review loop
 - Both CR and Macroscope are unavailable on GitHub (CR didn't deliver within 8 min + Macroscope timed out after 10 min)
 - Neither CR nor Macroscope is configured for the repo
 
 ### How to self-review
+
 Review the full diff (`git diff main...HEAD`) and check for:
 1. **Bugs** — logic errors, off-by-one, null/undefined access, race conditions
 2. **Security** — SQL injection, XSS, secrets in code, unsafe input handling
@@ -100,9 +103,11 @@ Review the full diff (`git diff main...HEAD`) and check for:
 6. **Edge cases** — empty arrays, zero values, missing fields, boundary conditions
 
 ### Output format
+
 List findings the same way you would process CR findings: verify each against the code, fix valid issues, and note what you checked. If no issues found, that counts as a clean pass for the exit criteria.
 
 ### Important
+
 - Self-review is a **fallback**, not a substitute. When CR is available, always prefer it.
 - Self-review counts toward the "two consecutive clean reviews" exit criteria only when CR is genuinely unavailable.
 - If CR comes back online mid-flow (e.g., it comments on the PR after you've moved on), process those findings in the next round.

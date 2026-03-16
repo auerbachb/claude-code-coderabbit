@@ -101,7 +101,7 @@ Context compaction can happen at any time in long sessions. When it does, you lo
 
 1. **Timestamp your first message.** (See "EVERY MESSAGE" rules in CLAUDE.md.)
 2. **Reconstruct PR state from GitHub.** For every open PR in the summary:
-   ```
+   ```bash
    gh pr view N --json state,title,mergeStateStatus,commits
    gh api "repos/{owner}/{repo}/pulls/N/reviews?per_page=100"
    gh api "repos/{owner}/{repo}/pulls/N/comments?per_page=100"
@@ -135,7 +135,7 @@ After compaction, read this file first: `cat ~/.claude/session-state.json`, then
 
 Since subagents receive the full rules (see above), this section serves as a **quick-reference summary** of the review protocol. The full details are in the other rule files — this summary exists so subagents can quickly locate the critical steps without scanning everything.
 
-```
+```text
 ## GitHub Review Loop — Quick Reference
 
 After pushing code and creating/updating a PR, follow this EXACT sequence:
