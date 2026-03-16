@@ -395,6 +395,16 @@ Subagents have a hardcoded **32K output token limit** that cannot be configured 
 - **Stagger Phase B launches:** max 3 PRs entering review loop simultaneously (avoids burning the shared 8 reviews/hour CR quota in one burst)
 - Use judgment on small PRs: if CR only found 1-2 findings, a single subagent may handle the full lifecycle without hitting token limits
 
+### Timestamped Status Updates (MANDATORY for parent agents)
+
+**Every message the parent agent sends to the user must start with a timestamp** in New York City (Eastern) time, formatted exactly as:
+
+`Mon Mar 16 02:34 AM ET`
+
+Get the timestamp via: `TZ='America/New_York' date +'%a %b %-d %I:%M %p ET'`
+
+This applies to ALL messages — status updates, failure reports, success reports, questions, summaries. No exceptions.
+
 ### Subagent Health Monitoring (MANDATORY for parent agents)
 
 The user has no visibility into subagent failures. If a subagent runs out of tokens or times out, the parent agent is the only one who knows — and if the parent doesn't report it, the user won't discover the failure until they manually check GitHub 15-20 minutes later. **This is unacceptable.**
@@ -411,7 +421,7 @@ The user has no visibility into subagent failures. If a subagent runs out of tok
 5. **Never assume success.** If a subagent was supposed to push code, verify the push happened (e.g., check `git log` or `gh pr view` for the expected commit). If it was supposed to reply to review threads, verify the replies exist.
 
 **What to tell the user on failure:**
-> "⚠️ Subagent for PR #N (Phase B) failed — ran out of tokens during CR polling. The last push was commit `abc1234`. CR review is pending but unprocessed. Want me to respawn a new agent to continue, or would you like to handle it?"
+> "Mon Mar 16 02:34 AM ET — ⚠️ Subagent for PR #N (Phase B) failed — ran out of tokens during CR polling. The last push was commit `abc1234`. CR review is pending but unprocessed. Want me to respawn a new agent to continue, or would you like to handle it?"
 
 The user should never have to discover a stalled PR by checking GitHub manually.
 
