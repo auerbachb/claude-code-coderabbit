@@ -45,9 +45,31 @@ Tell the user: "I'll create a worktree for isolated work." Then use the `EnterWo
 
 ---
 
+## Issue Creation Flow
+
+When creating a new GitHub issue (whether the user asked for it or you identified the need):
+
+### 1. Draft the issue locally
+- Write the title, body, acceptance criteria, and any relevant context
+- Do NOT post it yet
+
+### 2. Create the issue and trigger CR plan
+- Post the issue via `gh issue create`
+- Immediately comment `@coderabbitai plan` on the new issue:
+  ```
+  gh issue comment N --body "@coderabbitai plan"
+  ```
+- CR will analyze the issue and post an implementation plan with file recommendations, edge cases, and architectural considerations. This feedback is valuable — it catches gaps in the spec before any coding begins.
+
+### 3. If starting work immediately
+- If you're about to start coding on this issue right away, proceed to the **Issue Planning Flow** below — it handles waiting for CR's plan.
+- If the issue is for later (backlog), you're done — CR's plan will be there when someone picks it up.
+
+---
+
 ## Issue Planning Flow
 
-**Prerequisite:** Same CR check as the review loop below. If CR is not configured, skip steps 2, 4, and 5.
+**Prerequisite:** Same CR check as the review loop below. If CR is not configured, skip the CR-specific steps.
 
 When starting work on a GitHub issue, always follow this flow before writing any code:
 
@@ -55,31 +77,34 @@ When starting work on a GitHub issue, always follow this flow before writing any
 - Fetch the full issue body and comments via `gh issue view N`
 - Understand the requirements, context, and any discussion
 
-### 2. Kick off CR's plan (async)
-- Immediately comment `@coderabbitai plan` on the issue via `gh issue comment N --body "@coderabbitai plan"`
-- Do **not** wait for CR to respond — continue to step 3
+### 2. Check for CR's implementation plan
+CR automatically posts an implementation plan when issues are created (triggered by `@coderabbitai plan`). Check whether it exists:
+
+- **If the issue is older than 10 minutes:** Check comments for a plan from `coderabbitai[bot]`. If it exists, read it. If it doesn't exist (CR may not have been triggered), post `@coderabbitai plan` now and poll for up to 5 minutes. If still no response, proceed without it.
+- **If the issue is less than 10 minutes old:** CR may still be generating the plan. Poll every 60 seconds for a comment from `coderabbitai[bot]` on the issue. Timeout after 10 minutes from issue creation time — if no plan appears by then, proceed without it.
 
 ### 3. Build Claude's plan
 - Explore the codebase and design an implementation plan (use plan mode)
 - Draft the plan internally — do not post it yet
 
-### 4. Poll for CR's plan
-- Poll every 60 seconds for a new comment from `coderabbitai` on the issue
-- If 5 minutes pass with no response, continue with Claude's plan alone and check back later
-- Once CR's plan appears, read it fully
+### 4. Merge the plans into the issue body
+This creates **one canonical document** for the coding agent to work from:
 
-### 5. Merge the plans
-- Compare CR's plan against Claude's plan
-- If CR identified files, edge cases, or considerations that Claude missed, incorporate them
-- If Claude's plan already covers everything CR raised, no changes needed
-- The goal is the most robust plan, not a compromise — pick the best ideas from each
+1. **If CR posted a plan:** Compare CR's plan against Claude's plan. Incorporate anything CR identified that Claude missed (files, edge cases, architectural considerations, risks). The goal is the most robust plan — pick the best ideas from each.
+2. **If CR did not post a plan:** Use Claude's plan as-is.
+3. **Edit the issue body** to include the merged plan. Use `gh issue edit N --body "..."` to append a `## Implementation Plan` section to the existing issue body. Do NOT replace the original issue description — append the plan below it.
+4. **Comment on the issue** confirming the merge:
+   ```
+   gh issue comment N --body "Implementation plan merged into issue body (Claude's analysis + CodeRabbit's recommendations). Ready for implementation."
+   ```
+   If CR's plan was not available, note that:
+   ```
+   gh issue comment N --body "Implementation plan added to issue body (Claude's analysis only — CodeRabbit plan was not available). Ready for implementation."
+   ```
 
-### 6. Post the final plan
-- Post the **merged final plan** as a single comment on the issue
-- This is the plan of record — one clean comment, not multiple drafts
-
-### 7. Start coding
+### 5. Start coding
 - Create the feature branch (`issue-N-short-description`) and begin implementation
+- The coding agent should read the **issue body** (not scattered comments) for the canonical plan
 - When implementation is done, run the **Local CodeRabbit Review Loop** (below) before pushing
 
 ---
