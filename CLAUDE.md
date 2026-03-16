@@ -185,15 +185,53 @@ After pushing a commit to a PR, automatically enter the CR review loop:
 - **If Macroscope also fails** (10-minute timeout with no response): fall back to **self-review** (see below).
 - Tell the user which fallback was used and why.
 
+### Before Requesting Any New Review (MANDATORY — applies to ALL agents)
+
+> **⚠️ THE #2 SUBAGENT FAILURE MODE:** A new subagent picks up a PR, sees it needs a review, and immediately posts `@coderabbitai full review` — while the PR still has unresolved findings from the previous round sitting right above the request. CR sees this and reasonably asks "why are you requesting a new review when the last one had unresolved comments?" This wastes a review cycle and makes the bot look broken.
+
+**Before triggering `@coderabbitai full review` or entering the polling loop, ALWAYS do this first:**
+
+1. **Scan all existing review comments on the PR** by fetching all three endpoints:
+   - `repos/{owner}/{repo}/pulls/{N}/comments?per_page=100` (inline comments)
+   - `repos/{owner}/{repo}/pulls/{N}/reviews?per_page=100` (review-level comments)
+   - `repos/{owner}/{repo}/issues/{N}/comments?per_page=100` (PR conversation)
+2. **Identify unresolved findings** — any comment from `coderabbitai[bot]` or `macroscope-app[bot]` that:
+   - Has no reply confirming a fix
+   - Points to code that hasn't been changed since the comment was posted
+   - Is not marked as resolved/outdated
+3. **If unresolved findings exist: fix them first.** Read the findings, fix the code, commit, push, reply to each thread — then let CR auto-review the new push. Do NOT request a fresh review on top of unaddressed feedback.
+4. **If all findings are already addressed:** Verify by reading the current code, then proceed with requesting a review.
+
+### Resolving Comment Threads on GitHub
+
+GitHub does not auto-resolve PR review comments when the fix touches different lines than where the comment was made (which is common — e.g., a comment about a missing null check on line 42 gets fixed by adding a guard on line 38). **You must explicitly resolve these threads.**
+
+**How to resolve a comment thread after fixing it:**
+1. **Reply to the thread** confirming the fix (this is already required — see step 5 below)
+2. **Resolve the thread** via the GitHub API:
+   ```
+   gh api graphql -f query='mutation { minimizeComment(input: {subjectId: "<node_id>", classifier: RESOLVED}) { minimizedComment { isMinimized } } }'
+   ```
+   Or if the comment is a pull request review thread, use:
+   ```
+   gh api graphql -f query='mutation { resolveReviewThread(input: {threadId: "<thread_node_id>"}) { thread { isResolved } } }'
+   ```
+   To get the thread ID, fetch the review threads:
+   ```
+   gh api graphql -f query='query { repository(owner: "{owner}", name: "{repo}") { pullRequest(number: {N}) { reviewThreads(first: 100) { nodes { id isResolved comments(first: 1) { nodes { body author { login } } } } } } } }'
+   ```
+3. **Check that all threads are resolved** before requesting a new review. Unresolved threads signal to CR (and to human reviewers) that work is still outstanding.
+
 ### Processing CR Feedback
 1. Fetch the latest CR comments via `gh api`
 2. Parse each finding from CR's summary/review
 3. Verify each finding against the actual file before applying
 4. Fix **all valid findings**, then commit and push **once** (one commit = one review consumed)
 5. **Reply to every CR comment thread** acknowledging the fix (e.g. "Fixed in `abc1234`: <what changed>"). Pushing a code fix does NOT resolve a GitHub comment thread — you must post an explicit reply via `gh api repos/{owner}/{repo}/pulls/comments/{id}/replies -f body="…"`. Unreplied threads show as unresolved in the PR and block merge.
-6. **@mention CR in PR-level comments.** When posting general PR comments (via `gh pr comment`), always include `@coderabbitai` in the body so CR reads them. CR only reliably processes comments where it is explicitly mentioned — untagged PR comments are often ignored. This applies to fix summaries, duplicate-finding replies posted at the PR level, and any context you want CR to incorporate into its next review.
-7. Resume polling for CR's next response
-8. Repeat until CR has no more findings
+6. **Resolve the comment thread** after replying (see "Resolving Comment Threads on GitHub" above). A reply alone does not mark the thread as resolved — you must explicitly resolve it via the GraphQL API.
+7. **@mention CR in PR-level comments.** When posting general PR comments (via `gh pr comment`), always include `@coderabbitai` in the body so CR reads them. CR only reliably processes comments where it is explicitly mentioned — untagged PR comments are often ignored. This applies to fix summaries, duplicate-finding replies posted at the PR level, and any context you want CR to incorporate into its next review.
+8. Resume polling for CR's next response
+9. Repeat until CR has no more findings
 
 > **⚠️ CRITICAL: "Duplicate" findings are NOT resolved findings.**
 > CR labels a comment "duplicate" when it raised the same issue in a previous round — this does **not** mean the issue was fixed. Before dismissing any CR comment (actionable, duplicate, nitpick, or otherwise), **always verify the finding against the actual code**. Only dismiss it if the current code already addresses it. Never assume a prior round resolved something without checking the file.
@@ -385,6 +423,14 @@ Since subagents receive the full CLAUDE.md (see above), this section serves as a
 ## GitHub Review Loop — Quick Reference (details in full CLAUDE.md above)
 
 After pushing code and creating/updating a PR, follow this EXACT sequence:
+
+### Step 0: Check for unresolved findings BEFORE requesting any review
+BEFORE triggering `@coderabbitai full review` or entering the polling loop:
+1. Fetch all comments on the PR (all 3 endpoints, per_page=100)
+2. Look for unresolved findings from coderabbitai[bot] or macroscope-app[bot]
+3. If unresolved findings exist → fix them, push, reply, resolve threads FIRST
+4. Only request a new review after all prior findings are addressed
+Skipping this step wastes a review cycle and burns CR quota.
 
 ### Step 1: Wait for CR review (fast-path check every cycle, 8-min slow-path max)
 - Poll every 60s on all 3 endpoints (per_page=100):
