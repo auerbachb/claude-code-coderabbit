@@ -1,12 +1,18 @@
 ## Subagent Context
 
+> **Always:** Pass ALL rule files to subagents. Use phase decomposition (A/B/C). Timestamp every message. Monitor subagent health. Report failures immediately.
+> **Ask first:** Respawning a failed subagent — tell the user what happened first.
+> **Never:** Summarize rules for subagents. Fire-and-forget subagents. Let a stalled PR go unreported. Skip timestamps.
+
 When spawning subagents via the Task tool, **always pass the FULL contents of ALL rule files into the subagent's prompt.** Subagents do not automatically inherit CLAUDE.md or `.claude/rules/` context — they only see what you put in their prompt.
 
 **How to pass rules to subagents:**
-1. Read the root `CLAUDE.md` via `cat ~/.claude/CLAUDE.md`
-2. Read ALL files in `.claude/rules/` via `cat ~/.claude/rules/*.md` (or the repo's `.claude/rules/*.md`)
+1. Read the root `CLAUDE.md` — check **project root first** (`cat ./CLAUDE.md`), fall back to global (`cat ~/.claude/CLAUDE.md`) only if no project-level file exists
+2. Read ALL rule files — check **project root first** (`cat ./.claude/rules/*.md`), fall back to global (`cat ~/.claude/rules/*.md`)
 3. Include the COMPLETE output of both in the subagent's task description
 4. Do NOT summarize, excerpt, or paraphrase — pass the complete files
+
+> **Why project-local first:** Per-project configs override global ones. If a repo has its own `CLAUDE.md` or `.claude/rules/`, those are the active instructions — not `~/.claude/`. Passing the global file when a project-level file exists will give subagents the wrong rules.
 
 Without the full instructions, subagents will miss critical workflow steps (Macroscope fallback, ack-vs-completion detection, reply requirements) and improvise their own broken approach.
 
@@ -128,6 +134,7 @@ Valid combinations (at least 1 must be from CR):
 - NOT valid: 2 Macroscope only (need at least 1 CR)
 - NOT valid: 2 self-reviews only (need at least 1 CR)
 
-After Macroscope or self-review, wait 15 min then re-trigger `@coderabbitai full review`.
-If CR is still rate-limited after 15 min, tell the user and stop — do not loop forever.
+After Macroscope or self-review, the next step depends on whether you pushed new code:
+1. **New commit pushed** (e.g., Macroscope fixes) -> CR auto-triggers on the new SHA. Enter polling immediately — no wait needed.
+2. **Same SHA, manual re-trigger only** -> Wait 15 min, then `@coderabbitai full review`. If still rate-limited, tell user and stop.
 ```

@@ -1,5 +1,9 @@
 ## Macroscope Fallback (CodeRabbit Rate Limit Recovery)
 
+> **Always:** Trigger Macroscope after 8 min with no CR review OR on fast-path rate limit detection. Poll all 3 endpoints. Reply to every thread.
+> **Ask first:** Never — fix findings autonomously.
+> **Never:** Run Macroscope and CR simultaneously on the same push. Wait 15 min after pushing new code (fresh SHA = fresh CR chance).
+
 When CodeRabbit is rate-limited on GitHub, fall back to Macroscope for code review. Macroscope is **disabled by default** on all repos — it only runs when explicitly triggered via PR comment.
 
 ### When to trigger Macroscope
@@ -22,7 +26,10 @@ When a CodeRabbit rate limit is detected:
 
 2. **Poll for Macroscope's response** using the same polling pattern as CodeRabbit:
    - Poll every 60 seconds via `gh api` for new review comments from `macroscope-app[bot]`
-   - Check `repos/{owner}/{repo}/pulls/{N}/reviews?per_page=100` and `repos/{owner}/{repo}/issues/{N}/comments?per_page=100`
+   - Check all three endpoints:
+     - `repos/{owner}/{repo}/pulls/{N}/reviews?per_page=100`
+     - `repos/{owner}/{repo}/pulls/{N}/comments?per_page=100`
+     - `repos/{owner}/{repo}/issues/{N}/comments?per_page=100`
    - Timeout after **10 minutes** — if no response, fall back to **self-review** and inform the user that both CR and Macroscope are unavailable
 
 3. **Process Macroscope findings** the same way as CR findings:

@@ -24,16 +24,18 @@ This config encodes all of that into reusable instructions so you don't have to 
 ### Option 1: Global config (applies to all your projects)
 
 ```bash
+mkdir -p ~/.claude
 # Back up existing config if you have one
 cp ~/.claude/CLAUDE.md ~/.claude/CLAUDE.md.bak 2>/dev/null
 
 # Copy or symlink
 cp CLAUDE.md ~/.claude/CLAUDE.md
-cp -r .claude/rules ~/.claude/rules
+mkdir -p ~/.claude/rules
+cp -R .claude/rules/. ~/.claude/rules/
 
 # Or symlink (auto-updates when you pull changes)
-ln -sf /path/to/claude-code-coderabbit/CLAUDE.md ~/.claude/CLAUDE.md
-ln -sf /path/to/claude-code-coderabbit/.claude/rules ~/.claude/rules
+ln -sfn /path/to/claude-code-coderabbit/CLAUDE.md ~/.claude/CLAUDE.md
+ln -sfn /path/to/claude-code-coderabbit/.claude/rules ~/.claude/rules
 ```
 
 ### Option 2: Per-project config
@@ -41,7 +43,8 @@ ln -sf /path/to/claude-code-coderabbit/.claude/rules ~/.claude/rules
 ```bash
 # Copy into your project root
 cp CLAUDE.md /path/to/your/project/CLAUDE.md
-cp -r .claude/rules /path/to/your/project/.claude/rules
+mkdir -p /path/to/your/project/.claude/rules
+cp -R .claude/rules/. /path/to/your/project/.claude/rules/
 ```
 
 Claude Code loads `CLAUDE.md` from the project root first, then `~/.claude/CLAUDE.md` as a fallback. Files in `.claude/rules/` are auto-loaded alongside `CLAUDE.md`. Per-project configs let you customize per repo.
@@ -59,7 +62,7 @@ Claude Code loads `CLAUDE.md` from the project root first, then `~/.claude/CLAUD
 
 ## What's in the config
 
-The config is split into a root `CLAUDE.md` (~60 lines) and topic-specific rule files in `.claude/rules/` for better adherence ([Anthropic recommends <200 lines per file](https://docs.anthropic.com/en/docs/claude-code)).
+The config is split into a root `CLAUDE.md` (~60 lines) and topic-specific rule files in `.claude/rules/` for better adherence ([Anthropic best practices](https://docs.anthropic.com/en/docs/claude-code/best-practices), [memory docs](https://docs.anthropic.com/en/docs/claude-code/memory)). All `.md` files in `.claude/rules/` load automatically — including subdirectories, so you can organize further as the rules grow.
 
 | File | What it does |
 |---|---|

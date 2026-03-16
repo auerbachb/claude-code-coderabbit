@@ -1,5 +1,9 @@
 ## Issue Creation Flow
 
+> **Always:** Create a GitHub issue before any code work. Trigger `@coderabbitai plan` on every new issue. Merge CR's plan into the issue body.
+> **Ask first:** Never — issue creation and planning are autonomous.
+> **Never:** Skip the issue. Start coding without a plan. Post the plan as scattered comments instead of editing the issue body.
+
 When creating a new GitHub issue (whether the user asked for it or you identified the need):
 
 ### 1. Draft the issue locally
@@ -27,7 +31,7 @@ When creating a new GitHub issue (whether the user asked for it or you identifie
 When starting work on a GitHub issue, always follow this flow before writing any code:
 
 ### 1. Read the issue
-- Fetch the full issue body and comments via `gh issue view N`
+- Fetch the full issue body and comments via `gh issue view N --comments`
 - Understand the requirements, context, and any discussion
 
 ### 2. Check for CR's implementation plan
