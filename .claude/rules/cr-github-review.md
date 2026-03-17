@@ -124,10 +124,11 @@ If Greptile is unavailable (timeout), perform a self-review for risk reduction a
   1. **Ack (review started):** CR posts an issue comment (on `issues/{N}/comments`) with "Actions performed — Full review triggered." This means CR **started** the review — it is NOT a completion signal.
   2. **Completion (review finished):** The commit status check for CodeRabbit shows `status: "completed"` with `conclusion: "success"` (visible as "CodeRabbit — Review completed" in the PR's CI checks). This is the **definitive completion signal**.
   3. **Clean = completed + no new findings:** Once the CI check shows completed, check all three comment endpoints for any new findings posted after the ack. If there are none, the review is a clean pass. You do NOT need to keep polling to the 8-minute timeout once the CI check is green and no findings appeared.
-- After a clean Greptile pass (or after a self-review used only for risk reduction/blocker reporting), re-trigger CR to get the required CR clean pass:
+- After a clean Greptile pass, re-trigger CR to get the required CR clean passes:
   - **If you pushed new code since the last CR attempt** (new SHA): CR auto-triggers on push. Enter the normal polling loop immediately — do NOT wait 15 minutes. The new SHA has fresh check-runs; the old rate-limit message is irrelevant.
   - **If you're re-requesting review on the SAME SHA** (no new push): Wait 15 minutes before triggering `@coderabbitai full review`. Re-reviewing the same SHA while rate-limited will just fail again.
   - **After 2 failed re-triggers on the same SHA**, stop and tell the user. Do not loop forever.
+- If Greptile timed out and you performed self-review, report blocker status to the user and stop merge-readiness progression until a clean Greptile review is obtained.
 - Once the 3-review requirement is met, proceed immediately to Step 2.
 
 **Step 2 — Verify every Test Plan checkbox (MANDATORY — do NOT skip):**

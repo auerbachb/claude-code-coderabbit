@@ -35,7 +35,7 @@ Subagents have a hardcoded **32K output token limit** that cannot be configured 
 - **EXIT after confirming clean or after fixing one round**
 
 **Phase C: Merge Prep** (lightest)
-- Verify 2 consecutive clean reviews achieved
+- Verify merge gate is satisfied: 1 clean Greptile review + 2 clean CR reviews (final review must be CR)
 - Read PR body, verify all acceptance criteria against final code
 - Check off all boxes
 - Report ready for merge
