@@ -65,7 +65,7 @@ Detailed workflow rules are split into topic-specific files in `.claude/rules/`:
 | `issue-planning.md` | Issue creation flow, CR plan integration, planning flow |
 | `cr-local-review.md` | Local CodeRabbit CLI review loop (primary review workflow) |
 | `cr-github-review.md` | GitHub CR polling, rate limits, fast-path detection, thread resolution, completion criteria |
-| `macroscope.md` | Macroscope fallback + self-review fallback |
+| `greptile.md` | Greptile peer reviewer + CR fallback + self-review fallback |
 | `subagent-orchestration.md` | Task decomposition (phases A/B/C), health monitoring, timestamps, subagent quick-reference |
 | `work-log.md` | Auto-update daily work log on issue create, PR open, PR merge |
 

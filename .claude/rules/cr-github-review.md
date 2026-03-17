@@ -3,7 +3,7 @@
 
 > **Always:** Poll all 3 endpoints + check-runs every cycle. Use `per_page=100`. Filter by `coderabbitai[bot]`. Batch fixes into one commit. Reply to every thread. Resolve threads via GraphQL.
 > **Ask first:** Merging — always ask the user.
-> **Never:** Poll only 1-2 endpoints. Use bare `coderabbitai` without `[bot]`. Push per-finding. Trigger `@coderabbitai full review` more than twice/hour. Ignore the 8-minute Macroscope timeout.
+> **Never:** Poll only 1-2 endpoints. Use bare `coderabbitai` without `[bot]`. Push per-finding. Trigger `@coderabbitai full review` more than twice/hour. Skip waiting for Greptile's 5-minute timeout when it's triggered. Merge without all 3 required clean reviews.
 
 > **This is the fallback review workflow.** It runs after you push and create a PR. If the local review loop was thorough, CR should find few or no issues here. But edge cases exist (e.g., CI-only context, cross-file interactions the local review missed), so always let this loop run.
 
@@ -20,7 +20,7 @@ After pushing a commit to a PR, automatically enter the CR review loop:
 - **Batch fixes into a single commit before pushing.** If CR found 4 issues, fix all 4 in one commit — don't push 4 separate commits (that's 4 reviews consumed vs. 1).
 - **Never trigger `@coderabbitai full review` more than twice per PR per hour.** After 2 explicit triggers with no response, stop and tell the user CR may be rate-limited.
 - **When multiple agents are working in parallel on separate PRs**, each push consumes a review from the shared 8/hour pool. Coordinate: stagger pushes when possible, and never have more than 3-4 PRs triggering CR reviews in the same hour.
-- **If CR responds with "Reviews paused" or rate-limit language**, do NOT retry immediately. Fall back to **Macroscope** (see macroscope rules). If Macroscope is also unavailable, fall back to **self-review**.
+- **If CR responds with "Reviews paused" or rate-limit language**, do NOT retry immediately. Fall back to **Greptile** (see greptile rules). If Greptile is also unavailable, fall back to **self-review**.
 
 ### Polling
 - Poll every 60 seconds for new CodeRabbit comments/reviews on the PR
@@ -41,17 +41,18 @@ After pushing a commit to a PR, automatically enter the CR review loop:
     --jq '.[] | select(.context | test("CodeRabbit"; "i")) | {context, state, description}'
   ```
   - **Completion signal:** `status: "completed"` with `conclusion: "success"` = review done (visible as "CodeRabbit — Review completed" in the PR's CI checks box). This is the definitive signal, especially for clean passes.
-  - **Fast-path rate limit detection:** If EITHER endpoint shows rate limiting — check-run has `conclusion: "failure"` with `output.title` containing "rate limit" (case-insensitive), OR commit status has `state: "failure"`/`state: "error"` with `description` containing "rate limit" — **trigger Macroscope IMMEDIATELY.** Do not wait 8 minutes. This catches rate limits within ~60-120 seconds of pushing.
+  - **Fast-path rate limit detection:** If EITHER endpoint shows rate limiting — check-run has `conclusion: "failure"` with `output.title` containing "rate limit" (case-insensitive), OR commit status has `state: "failure"`/`state: "error"` with `description` containing "rate limit" — **trigger Greptile IMMEDIATELY.** Do not wait 8 minutes. This catches rate limits within ~60-120 seconds of pushing.
   - **Do NOT confuse the ack with completion.** The "Actions performed — Full review triggered" issue comment means CR **started** reviewing — it does NOT mean the review is finished. The CI check "CodeRabbit — Review completed" is what signals actual completion.
 - **CR's GitHub username is `coderabbitai[bot]` (with the `[bot]` suffix).** Always filter by `.user.login == "coderabbitai[bot]"` — NOT bare `coderabbitai`. Using the wrong username will silently miss all CR comments.
 - Track the **highest comment ID** seen so far across all three endpoints. Any comment from `coderabbitai[bot]` with an ID greater than the watermark is a new finding that needs attention.
 - If CR responds, process immediately
-- **Hard timeout: 8 minutes.** If CR has not delivered a review after 8 minutes of polling, stop waiting and trigger **Macroscope**. Do NOT keep polling — it wastes tokens and risks session timeout.
+- **Hard timeout: 8 minutes.** If CR has not delivered a review after 8 minutes of polling, stop waiting and trigger **Greptile**. Do NOT keep polling — it wastes tokens and risks session timeout.
 
-### Timeout & Fallback — Two Trigger Paths to Macroscope
-- **Fast path (~1-2 min):** The check-runs or commit statuses API shows "Review rate limit exceeded" -> trigger Macroscope immediately on that poll cycle. Do not wait.
-- **Slow path (8 min):** No rate-limit signal visible, but CR has not delivered review content after 8 minutes -> trigger Macroscope. The distinction between "rate-limited" and "slow" is irrelevant at this point — the action is the same.
-- **If Macroscope also fails** (10-minute timeout with no response): fall back to **self-review**.
+### Timeout & Fallback — Two Trigger Paths to Greptile
+
+- **Fast path (~1-2 min):** The check-runs or commit statuses API shows "Review rate limit exceeded" -> trigger Greptile immediately on that poll cycle. Do not wait.
+- **Slow path (8 min):** No rate-limit signal visible, but CR has not delivered review content after 8 minutes -> trigger Greptile. The distinction between "rate-limited" and "slow" is irrelevant at this point — the action is the same.
+- **If Greptile also fails** (5-minute timeout with no response): fall back to **self-review**.
 - Tell the user which fallback was used and why.
 
 ### Before Requesting Any New Review (MANDATORY — applies to ALL agents)
@@ -64,7 +65,7 @@ After pushing a commit to a PR, automatically enter the CR review loop:
    - `repos/{owner}/{repo}/pulls/{N}/comments?per_page=100` (inline comments)
    - `repos/{owner}/{repo}/pulls/{N}/reviews?per_page=100` (review-level comments)
    - `repos/{owner}/{repo}/issues/{N}/comments?per_page=100` (PR conversation)
-2. **Identify unresolved findings** — any comment from `coderabbitai[bot]` or `macroscope-app[bot]` that:
+2. **Identify unresolved findings** — any comment from `coderabbitai[bot]` or `greptile-apps[bot]` that:
    - Has no reply confirming a fix
    - Points to code that hasn't been changed since the comment was posted
    - Is not marked as resolved/outdated
@@ -110,23 +111,25 @@ GitHub does not auto-resolve PR review comments when the fix touches different l
 
 ### Completion
 
-**Step 1 — Confirm reviews are clean (2 consecutive clean reviews, at least 1 from CR):**
+**Step 1 — Confirm reviews are clean (3 clean reviews required):**
+
+Merge requires ALL of these:
+1. 1 clean Greptile review (no findings from `greptile-apps[bot]`)
+2. 2 clean CR reviews (no findings from `coderabbitai[bot]`) — the second is the confirmation pass, and the final review before merge must always be CR
+
+If Greptile is unavailable (timeout), perform a self-review for risk reduction and report the blocker to the user, but do NOT count self-review toward merge readiness. The required clean passes remain: 1 Greptile + 2 CR.
+
 - If CR responds with no findings after a round of fixes, post `@coderabbitai full review` one more time to confirm.
-- **How to detect a clean pass:** After triggering `@coderabbitai full review`, watch for these signals in order:
+- **How to detect a clean CR pass:** After triggering `@coderabbitai full review`, watch for these signals in order:
   1. **Ack (review started):** CR posts an issue comment (on `issues/{N}/comments`) with "Actions performed — Full review triggered." This means CR **started** the review — it is NOT a completion signal.
   2. **Completion (review finished):** The commit status check for CodeRabbit shows `status: "completed"` with `conclusion: "success"` (visible as "CodeRabbit — Review completed" in the PR's CI checks). This is the **definitive completion signal**.
-  3. **Clean = completed + no new findings:** Once the CI check shows completed, check all three comment endpoints for any new findings posted after the ack. If there are none, the review is a clean pass. You do NOT need to keep polling for the full 10 minutes once the CI check is green and no findings appeared.
-- **Valid combinations for merge readiness (2 clean reviews required):**
-  - 2 consecutive clean CodeRabbit reviews
-  - 1 clean Macroscope review + 1 clean CodeRabbit review
-  - 1 clean self-review + 1 clean CodeRabbit review
-  - NOT valid: 2 clean Macroscope reviews (need at least 1 CR)
-  - NOT valid: 2 clean self-reviews (need at least 1 CR)
-- After a clean Macroscope or self-review, re-trigger CR to get the required CR clean pass:
+  3. **Clean = completed + no new findings:** Once the CI check shows completed, check all three comment endpoints for any new findings posted after the ack. If there are none, the review is a clean pass. You do NOT need to keep polling to the 8-minute timeout once the CI check is green and no findings appeared.
+- After a clean Greptile pass, re-trigger CR to get the required CR clean passes:
   - **If you pushed new code since the last CR attempt** (new SHA): CR auto-triggers on push. Enter the normal polling loop immediately — do NOT wait 15 minutes. The new SHA has fresh check-runs; the old rate-limit message is irrelevant.
   - **If you're re-requesting review on the SAME SHA** (no new push): Wait 15 minutes before triggering `@coderabbitai full review`. Re-reviewing the same SHA while rate-limited will just fail again.
   - **After 2 failed re-triggers on the same SHA**, stop and tell the user. Do not loop forever.
-- Once the 2-review requirement is met, proceed immediately to Step 2.
+- If Greptile timed out and you performed self-review, report blocker status to the user and stop merge-readiness progression until a clean Greptile review is obtained.
+- Once the 3-review requirement is met, proceed immediately to Step 2.
 
 **Step 2 — Verify every Test Plan checkbox (MANDATORY — do NOT skip):**
 > This is the **immediate next step** after CR is clean. Do not ask the user about merging until this is done.

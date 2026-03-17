@@ -14,14 +14,14 @@ When spawning subagents via the Task tool, **always pass the FULL contents of AL
 
 > **Why project-local first:** Per-project configs override global ones. If a repo has its own `CLAUDE.md` or `.claude/rules/`, those are the active instructions — not `~/.claude/`. Passing the global file when a project-level file exists will give subagents the wrong rules.
 
-Without the full instructions, subagents will miss critical workflow steps (Macroscope fallback, ack-vs-completion detection, reply requirements) and improvise their own broken approach.
+Without the full instructions, subagents will miss critical workflow steps (Greptile fallback, ack-vs-completion detection, reply requirements) and improvise their own broken approach.
 
 ### Subagent Task Decomposition (Token Safety)
 
 Subagents have a hardcoded **32K output token limit** that cannot be configured ([known Claude Code limitation](https://github.com/anthropics/claude-code/issues/25569)). A single subagent that reads 10-20 CR findings, fixes code, pushes, replies to every thread, AND polls for the next review will exhaust its token budget and die mid-poll. To prevent this, break PR lifecycle work into sequential phases:
 
 **Phase A: Fix + Push** (heaviest — uses most tokens)
-- Read CR/Macroscope findings from GitHub API
+- Read CR/Greptile findings from GitHub API
 - Read affected source files
 - Fix all valid findings + fix lint/CI failures
 - Commit all fixes in ONE commit, push once
@@ -29,13 +29,13 @@ Subagents have a hardcoded **32K output token limit** that cannot be configured 
 - **EXIT after push — do not enter polling loop**
 
 **Phase B: Review Loop** (lighter — incremental)
-- Poll for new CR review (fast-path + 8-minute slow-path Macroscope trigger)
-- If CR/Macroscope posts new findings: fix, commit, push, reply (same as Phase A but smaller scope)
+- Poll for new CR review (fast-path + 8-minute slow-path Greptile trigger)
+- If CR/Greptile posts new findings: fix, commit, push, reply (same as Phase A but smaller scope)
 - If clean pass: trigger one more `@coderabbitai full review` for confirmation
 - **EXIT after confirming clean or after fixing one round**
 
 **Phase C: Merge Prep** (lightest)
-- Verify 2 consecutive clean reviews achieved
+- Verify merge gate is satisfied: 1 clean Greptile review + 2 clean CR reviews (final review must be CR)
 - Read PR body, verify all acceptance criteria against final code
 - Check off all boxes
 - Report ready for merge
@@ -44,8 +44,8 @@ Subagents have a hardcoded **32K output token limit** that cannot be configured 
 - Parent agent launches Phase A subagents (can run in parallel across different PRs)
 - When Phase A completes, parent launches Phase B for that PR
 - When Phase B reports clean, parent launches Phase C
-- **No hard limit on parallel Phase B PRs.** CR rate limiting is handled by the Macroscope fallback — if CR is rate-limited, Macroscope fills in. The only bottleneck is the final "at least 1 CR clean pass" requirement, which the user will address separately (alternative reviewer API, higher Macroscope tier, or manual review).
-- **Track CR quota.** Maintain a running count of CR reviews consumed this hour. Increment when: pushing to a PR with CR configured (auto-review), or posting `@coderabbitai full review`. If count reaches 7 in the current hour, expect Macroscope to be the primary reviewer for remaining PRs until the window resets.
+- **No hard limit on parallel Phase B PRs.** CR rate limiting is handled by the Greptile fallback for interim feedback, but merge readiness still requires the full gate: 1 clean Greptile + 2 clean CR passes.
+- **Track CR quota.** Maintain a running count of CR reviews consumed this hour. Increment when: pushing to a PR with CR configured (auto-review), or posting `@coderabbitai full review`. If count reaches 7 in the current hour, expect Greptile to be the primary reviewer for remaining PRs until the window resets.
 - Use judgment on small PRs: if CR only found 1-2 findings, a single subagent may handle the full lifecycle without hitting token limits
 
 ### Timestamped Status Updates (MANDATORY for parent agents)
@@ -120,7 +120,7 @@ When running a long monitoring session with multiple PRs, periodically write a s
   "last_updated": "2026-03-16T16:00:00Z",
   "monitoring_active": true,
   "prs": {
-    "618": {"phase": "B", "round": 2, "head_sha": "7b2cfbf", "reviews_clean": ["macroscope"], "needs": "cr_clean"},
+    "618": {"phase": "B", "round": 2, "head_sha": "7b2cfbf", "reviews_clean": ["greptile", "cr_round_1"], "needs": "cr_round_2_clean"},
     "620": {"phase": "B", "round": 1, "head_sha": "d0e4fef", "reviews_clean": [], "needs": "fix_and_push"}
   },
   "cr_quota": {"reviews_used": 5, "window_start": "2026-03-16T15:00:00Z"},
@@ -143,7 +143,7 @@ After pushing code and creating/updating a PR, follow this EXACT sequence:
 ### Step 0: Check for unresolved findings BEFORE requesting any review
 BEFORE triggering `@coderabbitai full review` or entering the polling loop:
 1. Fetch all comments on the PR (all 3 endpoints, per_page=100)
-2. Look for unresolved findings from coderabbitai[bot] or macroscope-app[bot]
+2. Look for unresolved findings from coderabbitai[bot] or greptile-apps[bot]
 3. If unresolved findings exist -> fix them, push, reply, resolve threads FIRST
 4. Only request a new review after all prior findings are addressed
 Skipping this step wastes a review cycle and burns CR quota.
@@ -156,44 +156,44 @@ Skipping this step wastes a review cycle and burns CR quota.
 - Filter by `coderabbitai[bot]` (with [bot] suffix)
 - EVERY cycle, check commit status for rate limit (FAST PATH):
   `gh api "repos/{owner}/{repo}/commits/{SHA}/check-runs" --jq '.check_runs[] | select(.name == "CodeRabbit")'`
-  If check shows "rate limit" in output.title with conclusion "failure" -> Macroscope IMMEDIATELY.
+  If check shows "rate limit" in output.title with conclusion "failure" -> Greptile IMMEDIATELY.
   If check-runs empty, also check: `gh api "repos/{owner}/{repo}/commits/{SHA}/statuses"`
 
-### Step 2: After 8 minutes with no review -> trigger Macroscope (NO EXCEPTIONS)
-If 8 minutes pass and CR has not delivered review content, trigger Macroscope.
+### Step 2: After 8 minutes with no review -> trigger Greptile (NO EXCEPTIONS)
+If 8 minutes pass and CR has not delivered review content, trigger Greptile.
 It does NOT matter whether you see an explicit rate-limit signal.
 The "Actions performed" ack means CR STARTED — it is NOT a review.
 If you see the ack but no review within 8 minutes, CR failed to deliver.
 
-### Step 3: Trigger Macroscope
-1. Post: `gh pr comment <PR_NUMBER> --body "@macroscope-app review"`
-2. Poll every 60s for `macroscope-app[bot]` comments on the same 3 endpoints
-3. Timeout after 10 minutes — if no response, do a self-review instead
-4. Process Macroscope findings same as CR: fix all valid findings in one commit, push once
-5. Reply to EVERY Macroscope comment thread confirming the fix:
+### Step 3: Trigger Greptile (if not already running)
+1. Post: `gh pr comment <PR_NUMBER> --body "@greptileai"`
+2. Poll every 60s for `greptile-apps[bot]` comments on the same 3 endpoints
+3. Timeout after 5 minutes (Greptile typically responds in 1-3 minutes)
+4. If no response, do a self-review instead
+5. Process Greptile findings same as CR: fix all valid findings in one commit, push once
+6. Reply to EVERY Greptile comment thread confirming the fix:
    - Inline comments: `gh api repos/{owner}/{repo}/pulls/comments/{id}/replies -f body="Fixed in \`SHA\`: <what changed>"`
-   - Issue comments: `gh api repos/{owner}/{repo}/issues/{N}/comments -f body="@macroscope-app Fixed: <summary>"`
+   - Issue comments: `gh api repos/{owner}/{repo}/issues/{N}/comments -f body="@greptileai Fixed: <summary>"`
    Pushing code does NOT resolve threads — you MUST post explicit replies.
 
-### After Macroscope fix+push: CR gets a fresh chance automatically
+### After Greptile fix+push: CR gets a fresh chance automatically
 Pushing creates a new SHA with clean check-runs. CR auto-triggers on push.
 Do NOT wait 15 minutes. Enter the normal polling loop on the new SHA.
 The 15-min wait only applies to `@coderabbitai full review` on the SAME SHA.
 
-### Macroscope clean detection
-Check-run `Macroscope - Correctness Check` with `conclusion: "success"` + no review comments = clean pass.
-No need to wait for a review object if the check-run is green.
-Check via: `gh api "repos/{owner}/{repo}/commits/{SHA}/check-runs" --jq '.check_runs[] | select(.app.slug == "macroscopeapp")'`
+### Greptile clean detection
+greptile-apps[bot] posts a review/summary with no actionable findings = clean pass.
+Also watch for 👍 completion signal with no inline comments.
+Check-run name: TBD — update after first Greptile review on this repo.
 
-### Step 4: Get 2 clean reviews for merge readiness
-Valid combinations (at least 1 must be from CR):
-- 2 clean CodeRabbit reviews
-- 1 clean Macroscope + 1 clean CodeRabbit
-- 1 clean self-review + 1 clean CodeRabbit
-- NOT valid: 2 Macroscope only (need at least 1 CR)
-- NOT valid: 2 self-reviews only (need at least 1 CR)
+### Step 4: Get 3 clean reviews for merge readiness
+Merge requires ALL of these:
+1. 1 clean Greptile review (no findings from greptile-apps[bot])
+2. 2 clean CR reviews (no findings from coderabbitai[bot]) — the second is the confirmation pass, and the final review before merge must always be CR
 
-After Macroscope or self-review, the next step depends on whether you pushed new code:
-1. **New commit pushed** (e.g., Macroscope fixes) -> CR auto-triggers on the new SHA. Enter polling immediately — no wait needed.
+If Greptile is unavailable (timeout), perform self-review for risk reduction and report the blocker, but do NOT count self-review toward merge readiness. Required gate remains 1 Greptile + 2 CR.
+
+After a Greptile pass (or after self-review used only for risk reduction while reporting a blocker), the next CR step depends on whether you pushed new code:
+1. **New commit pushed** (e.g., Greptile fixes) -> CR auto-triggers on the new SHA. Enter polling immediately — no wait needed.
 2. **Same SHA, manual re-trigger only** -> Wait 15 min, then `@coderabbitai full review`. If still rate-limited, tell user and stop.
 ```
