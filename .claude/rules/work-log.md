@@ -56,7 +56,7 @@ This data measures PR throughput, average cycle time, and review friction — in
 
 **How to count cycles:** Increment the cycle counter each time any reviewer (bot or human) posts findings that result in a new fix commit. Clean passes and confirmation reviews do not count.
 
-**Determining the count at merge time:** If the cycle count wasn't tracked during the session (e.g., after context compaction or session handoff), reconstruct it from the PR's history: fetch all review objects on `pulls/{N}/reviews` and all commits on `pulls/{N}/commits`. Count each review that contains actionable findings (i.e., has inline comments or a body with specific fix requests) and is followed by at least one new commit before the next review or merge. Each such review-then-fix pair = 1 cycle. Reviews with no findings (clean passes) do not count.
+**Determining the count at merge time:** If the cycle count wasn't tracked during the session (e.g., after context compaction or session handoff), reconstruct it from the PR's history: fetch all review objects on `pulls/{N}/reviews` and all commits on `pulls/{N}/commits`. Count each review that is actionable (has inline comments, a body with specific fix requests, or `state: "CHANGES_REQUESTED"`) and is followed by at least one new commit before the next review or merge. Each such review-then-fix pair = 1 cycle. Reviews with no findings (clean passes) do not count.
 
 ### PR merge summaries
 
@@ -72,7 +72,7 @@ When working in a worktree, any edits to shared docs (session logs, work logs, c
 
 **Before pushing any PR or closing the work session, the agent must ensure one of the following:**
 
-1. **Commit the log file in the PR branch** — stage and commit the work-log file alongside the code changes so it merges with the PR.
+1. **Commit the shared doc in the PR branch** — stage and commit the affected shared doc(s) alongside the code changes so they merge with the PR.
 2. **Manually sync the log to the root repo** — if the log edits should not be part of the PR (e.g., the log lives in a different repo or on main), append only the missing Activity Log entries to the root repo's copy (do not replace the entire file), then commit separately.
 
 **Never assume a worktree-local edit to a shared doc will "make it back" on its own.** At task completion, verify the root repo's copy is current:
