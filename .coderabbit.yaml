@@ -2,16 +2,15 @@
 # This repo contains Claude Code agent configuration files (not application code).
 
 reviews:
-  # General review context for the entire repo
-  instructions: |
-    This repository contains Claude Code agent configuration files — CLAUDE.md
-    and .claude/rules/*.md — not application code. These files are loaded into
-    Claude's context window on every conversation turn, so token efficiency is
-    critical. Reviews should focus on clarity, consistency, correctness of
-    workflow instructions, and token efficiency rather than code-level concerns.
-
-  # Structural quality checks for rule files
   path_instructions:
+    - path: "**/*"
+      instructions: |
+        This repository contains Claude Code agent configuration files — CLAUDE.md
+        and .claude/rules/*.md — not application code. These files are loaded into
+        Claude's context window on every conversation turn, so token efficiency is
+        critical. Reviews should focus on clarity, consistency, correctness of
+        workflow instructions, and token efficiency rather than code-level concerns.
+
     - path: "CLAUDE.md"
       instructions: |
         When reviewing changes to this file, check the following structural
@@ -33,7 +32,7 @@ reviews:
            fewer words. Every unnecessary word costs tokens on every conversation
            turn across every session.
 
-    - path: ".claude/rules/**"
+    - path: ".claude/rules/**/*.md"
       instructions: |
         When reviewing changes to rule files, check the following structural
         quality criteria. These matter because all .claude/rules/*.md files are
@@ -58,3 +57,6 @@ reviews:
 knowledge_base:
   code_guidelines:
     enabled: true
+    filePatterns:
+      - "CLAUDE.md"
+      - ".claude/rules/**/*.md"
