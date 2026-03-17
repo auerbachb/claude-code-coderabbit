@@ -48,11 +48,11 @@ Every PR log entry (both opened and merged) must include these fields in a brack
 
 1. **`opened`** — timestamp when the PR was created (recorded at PR open time)
 2. **`merged`** — timestamp when the PR was merged or closed (recorded at merge time)
-3. **`cycles`** — count of review-then-revise rounds before approval. Each CodeRabbit, Greptile, or human review that triggers a new commit counts as one cycle. A PR that passes review on the first push has `cycles: 0`.
+3. **`cycles`** — count of review-then-revise rounds before approval. Each review (bot or human) that triggers a new commit counts as one cycle. A PR that passes review on the first push has `cycles: 0`.
 
 This data measures PR throughput, average cycle time, and review friction — informing how many simultaneous PRs can be effectively managed in parallel.
 
-**How to count cycles:** Increment the cycle counter each time a reviewer (CR, Greptile, or human) posts findings that result in a new fix commit. Clean passes and confirmation reviews do not count.
+**How to count cycles:** Increment the cycle counter each time any reviewer (bot or human) posts findings that result in a new fix commit. Clean passes and confirmation reviews do not count.
 
 **Determining the count at merge time:** If the cycle count wasn't tracked during the session (e.g., after context compaction or session handoff), reconstruct it from the PR's history: fetch all review objects on `pulls/{N}/reviews` and all commits on `pulls/{N}/commits`. Count each review (from any reviewer — bot or human) that is followed by at least one new commit before the next review or merge. Each such review-then-commit pair = 1 cycle.
 
