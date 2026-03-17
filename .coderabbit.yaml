@@ -6,7 +6,7 @@ reviews:
     - path: "**/*"
       instructions: |
         This repository contains Claude Code agent configuration files — CLAUDE.md
-        and .claude/rules/*.md — not application code. These files are loaded into
+        and .claude/rules/**/*.md — not application code. These files are loaded into
         Claude's context window on every conversation turn, so token efficiency is
         critical. Reviews should focus on clarity, consistency, correctness of
         workflow instructions, and token efficiency rather than code-level concerns.
@@ -14,12 +14,12 @@ reviews:
     - path: "CLAUDE.md"
       instructions: |
         When reviewing changes to this file, check the following structural
-        quality criteria. These matter because CLAUDE.md and all .claude/rules/*.md
+        quality criteria. These matter because CLAUDE.md and all .claude/rules/**/*.md
         files are loaded into Claude's context window every turn — bloated or
         poorly structured rules waste tokens and degrade agent performance.
 
         1. TOKEN FOOTPRINT: Flag if the total word count across CLAUDE.md and all
-           .claude/rules/*.md files exceeds 10,000 words (~13K tokens, ~6.5% of
+           .claude/rules/**/*.md files exceeds 10,000 words (~13K tokens, ~6.5% of
            the 200K context window). Include the current total in your review.
         2. INFORMATION HIERARCHY: The most critical behaviors (timestamps,
            worktree requirements, never-do lists) must appear at the top of the
@@ -35,12 +35,12 @@ reviews:
     - path: ".claude/rules/**/*.md"
       instructions: |
         When reviewing changes to rule files, check the following structural
-        quality criteria. These matter because all .claude/rules/*.md files are
+        quality criteria. These matter because all .claude/rules/**/*.md files are
         loaded into Claude's context window every turn — bloated or poorly
         structured rules waste tokens and degrade agent performance.
 
         1. TOKEN FOOTPRINT: Flag if the total word count across CLAUDE.md and all
-           .claude/rules/*.md files exceeds 10,000 words (~13K tokens, ~6.5% of
+           .claude/rules/**/*.md files exceeds 10,000 words (~13K tokens, ~6.5% of
            the 200K context window). Include the current total in your review.
         2. INFORMATION HIERARCHY: The most critical behaviors should appear at the
            top of each file. Flag if high-priority rules are buried below less
