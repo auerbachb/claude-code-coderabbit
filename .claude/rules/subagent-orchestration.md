@@ -193,7 +193,7 @@ Merge requires ALL of these:
 
 If Greptile is unavailable (timeout), perform self-review for risk reduction and report the blocker, but do NOT count self-review toward merge readiness. Required gate remains 1 Greptile + 2 CR.
 
-After Greptile or self-review, the next step depends on whether you pushed new code:
+After a Greptile pass (or after self-review used only for risk reduction while reporting a blocker), the next CR step depends on whether you pushed new code:
 1. **New commit pushed** (e.g., Greptile fixes) -> CR auto-triggers on the new SHA. Enter polling immediately — no wait needed.
 2. **Same SHA, manual re-trigger only** -> Wait 15 min, then `@coderabbitai full review`. If still rate-limited, tell user and stop.
 ```
