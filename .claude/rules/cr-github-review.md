@@ -3,7 +3,7 @@
 
 > **Always:** Poll all 3 endpoints + check-runs every cycle. Use `per_page=100`. Filter by `coderabbitai[bot]`. Batch fixes into one commit. Reply to every thread. Resolve threads via GraphQL.
 > **Ask first:** Merging — always ask the user.
-> **Never:** Poll only 1-2 endpoints. Use bare `coderabbitai` without `[bot]`. Push per-finding. Trigger `@coderabbitai full review` more than twice/hour. Ignore the 5-minute Greptile timeout. Merge without all 3 required clean reviews.
+> **Never:** Poll only 1-2 endpoints. Use bare `coderabbitai` without `[bot]`. Push per-finding. Trigger `@coderabbitai full review` more than twice/hour. Skip waiting for Greptile's 5-minute timeout when it's triggered. Merge without all 3 required clean reviews.
 
 > **This is the fallback review workflow.** It runs after you push and create a PR. If the local review loop was thorough, CR should find few or no issues here. But edge cases exist (e.g., CI-only context, cross-file interactions the local review missed), so always let this loop run.
 
