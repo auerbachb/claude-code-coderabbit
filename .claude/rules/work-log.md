@@ -37,14 +37,14 @@ Append a timestamped line to `## Activity Log` on each of these events:
 | Event | Format |
 |-------|--------|
 | Issue created | `- {time} ET — Issue #{N} created: {title}` |
-| PR opened | `- {time} ET — PR #{N} opened (Issue #{M}): {title} [opened: {open_time}]` |
+| PR opened | `- {time} ET — PR #{N} opened (Issue #{M}): {title} [opened: {open_time}, merged: -, cycles: 0]` |
 | PR merged | `- {time} ET — PR #{N} merged (Issue #{M}): {summary} [opened: {open_time}, merged: {merge_time}, cycles: {N}]` |
 
 **Time format:** `2:34 PM` (12-hour, no leading zero). Get via: `TZ='America/New_York' date +'%l:%M %p' | sed 's/^ //'`.
 
 ### PR lifecycle fields
 
-Every PR log entry must include these fields in a bracketed suffix:
+Every PR log entry (both opened and merged) must include these fields in a bracketed suffix. At PR open time, use placeholder values for fields not yet known (`merged: -`, `cycles: 0`). At merge time, update the entry with final values:
 
 1. **`opened`** — timestamp when the PR was created (recorded at PR open time)
 2. **`merged`** — timestamp when the PR was merged or closed (recorded at merge time)
@@ -54,13 +54,13 @@ This data measures PR throughput, average cycle time, and review friction — in
 
 **How to count cycles:** Increment the cycle counter each time a reviewer (CR, Greptile, or human) posts findings that result in a new fix commit. Clean passes and confirmation reviews do not count.
 
-**Determining the count at merge time:** If the cycle count wasn't tracked during the session (e.g., after context compaction or session handoff), reconstruct it from the PR's history: count the number of review objects from `coderabbitai[bot]` or `greptile-apps[bot]` on `pulls/{N}/reviews` that have `state: "COMMENTED"`. Each such review = 1 cycle (clean passes with no inline comments don't produce `COMMENTED` review objects, so the count is accurate).
+**Determining the count at merge time:** If the cycle count wasn't tracked during the session (e.g., after context compaction or session handoff), reconstruct it from the PR's history: fetch all review objects on `pulls/{N}/reviews` and all commits on `pulls/{N}/commits`. Count each review (from any reviewer — bot or human) that is followed by at least one new commit before the next review or merge. Each such review-then-commit pair = 1 cycle.
 
 ### PR merge summaries
 
 On PR merge, write a brief 1-line summary of what the PR accomplished in context of the project — not just the PR title. Examples:
 
-```
+```text
 - 3:15 PM ET — PR #635 merged (Issue #634): Adds global rule for automatic work log entries so every issue/PR/merge event is captured in real time [opened: 2:30 PM, merged: 3:15 PM, cycles: 2]
 ```
 
@@ -78,14 +78,14 @@ When working in a worktree, any edits to shared docs (session logs, work logs, c
 ```bash
 # ROOT_REPO = first entry from: git worktree list (the main worktree)
 # WORKTREE = current working directory (pwd)
-diff "$WORKTREE/docs/work-logs/session-log-YYYY-MM-DD.md" "$ROOT_REPO/docs/work-logs/session-log-YYYY-MM-DD.md"
+# WORK_LOG_PATH = confirmed canonical path from session start (e.g., docs/work-logs)
+diff "$WORKTREE/$WORK_LOG_PATH/session-log-YYYY-MM-DD.md" "$ROOT_REPO/$WORK_LOG_PATH/session-log-YYYY-MM-DD.md"
 ```
 
-If the root repo's copy is missing updates, copy them over before closing out the task:
+If the root repo's copy is missing Activity Log entries, reconcile without overwriting:
 
-```bash
-cp "$WORKTREE/docs/work-logs/session-log-YYYY-MM-DD.md" "$ROOT_REPO/docs/work-logs/session-log-YYYY-MM-DD.md"
-```
+- **Preferred:** Include the log file in the PR branch (option 1 above) so Git handles the merge.
+- **If manual sync is needed:** Append only the missing Activity Log entries to the root repo's copy — never replace the entire file, as the root copy may have diverged with its own narrative content or entries from other agents.
 
 ## Coexistence with Narrative Content
 
