@@ -1,8 +1,8 @@
 # Work Log Auto-Update
 
-> **Always:** Log issue creates, PR opens, and PR merges to the daily work log file. Check for `work-logs/` directory at session start.
+> **Always:** Log issue creates, PR opens, and PR merges to the daily work log file. Check for `work-logs/` directory at session start. Sync worktree log edits back to the root repo.
 > **Ask first:** At session start, confirm the work log directory with the user (once only — skip if already known from context).
-> **Never:** Skip logging events. Overwrite existing narrative content in the log file. Log to a directory that doesn't exist.
+> **Never:** Skip logging events. Overwrite existing narrative content in the log file. Log to a directory that doesn't exist. Leave log updates stranded in a worktree.
 
 ## Session Start: Detect Work Log Directory
 
@@ -37,17 +37,54 @@ Append a timestamped line to `## Activity Log` on each of these events:
 | Event | Format |
 |-------|--------|
 | Issue created | `- {time} ET — Issue #{N} created: {title}` |
-| PR opened | `- {time} ET — PR #{N} opened (Issue #{M}): {title}` |
-| PR merged | `- {time} ET — PR #{N} merged (Issue #{M}): {1-line summary of what the PR accomplished}` |
+| PR opened | `- {time} ET — PR #{N} opened (Issue #{M}): {title} [opened: {open_time}]` |
+| PR merged | `- {time} ET — PR #{N} merged (Issue #{M}): {summary} [opened: {open_time}, merged: {merge_time}, cycles: {N}]` |
 
 **Time format:** `2:34 PM` (12-hour, no leading zero). Get via: `TZ='America/New_York' date +'%l:%M %p' | sed 's/^ //'`.
 
+### PR lifecycle fields
+
+Every PR log entry must include these fields in a bracketed suffix:
+
+1. **`opened`** — timestamp when the PR was created (recorded at PR open time)
+2. **`merged`** — timestamp when the PR was merged or closed (recorded at merge time)
+3. **`cycles`** — count of review-then-revise rounds before approval. Each CodeRabbit, Greptile, or human review that triggers a new commit counts as one cycle. A PR that passes review on the first push has `cycles: 0`.
+
+This data measures PR throughput, average cycle time, and review friction — informing how many simultaneous PRs can be effectively managed in parallel.
+
+**How to count cycles:** Increment the cycle counter each time a reviewer (CR, Greptile, or human) posts findings that result in a new fix commit. Clean passes and confirmation reviews do not count.
+
+**Determining the count at merge time:** If the cycle count wasn't tracked during the session (e.g., after context compaction or session handoff), reconstruct it from the PR's history: count the number of review objects from `coderabbitai[bot]` or `greptile-apps[bot]` on `pulls/{N}/reviews` that have `state: "COMMENTED"`. Each such review = 1 cycle (clean passes with no inline comments don't produce `COMMENTED` review objects, so the count is accurate).
+
 ### PR merge summaries
 
-On PR merge, write a brief 1-line summary of what the PR accomplished in context of the project — not just the PR title. Example:
+On PR merge, write a brief 1-line summary of what the PR accomplished in context of the project — not just the PR title. Examples:
 
 ```
-- 3:15 PM ET — PR #635 merged (Issue #634): Adds global rule for automatic work log entries so every issue/PR/merge event is captured in real time
+- 3:15 PM ET — PR #635 merged (Issue #634): Adds global rule for automatic work log entries so every issue/PR/merge event is captured in real time [opened: 2:30 PM, merged: 3:15 PM, cycles: 2]
+```
+
+## Worktree Log Sync
+
+When working in a worktree, any edits to shared docs (session logs, work logs, changelogs, etc.) are local to that worktree. These edits will **not** automatically appear in the root repo after merge unless the file is part of the PR's diff.
+
+**Before pushing any PR or closing the work session, the agent must ensure one of the following:**
+
+1. **Commit the log file in the PR branch** — stage and commit the work-log file alongside the code changes so it merges with the PR.
+2. **Manually sync the log to the root repo** — if the log edits should not be part of the PR (e.g., the log lives in a different repo or on main), copy the updated log to the root repo's working directory and commit it there separately.
+
+**Never assume a worktree-local edit to a shared doc will "make it back" on its own.** At task completion, verify the root repo's copy is current:
+
+```bash
+# ROOT_REPO = first entry from: git worktree list (the main worktree)
+# WORKTREE = current working directory (pwd)
+diff "$WORKTREE/docs/work-logs/session-log-YYYY-MM-DD.md" "$ROOT_REPO/docs/work-logs/session-log-YYYY-MM-DD.md"
+```
+
+If the root repo's copy is missing updates, copy them over before closing out the task:
+
+```bash
+cp "$WORKTREE/docs/work-logs/session-log-YYYY-MM-DD.md" "$ROOT_REPO/docs/work-logs/session-log-YYYY-MM-DD.md"
 ```
 
 ## Coexistence with Narrative Content
