@@ -1,6 +1,6 @@
 ---
 name: standup
-description: Generate a daily standup summary of what was accomplished since the last standup, from a business logic perspective
+description: Generate a daily standup summary of what was accomplished since the last standup, from a business logic perspective. Reads PR bodies to understand what changes actually enabled.
 disable-model-invocation: true
 argument-hint: [since-time, e.g. "yesterday at noon ET"]
 ---
@@ -8,6 +8,8 @@ argument-hint: [since-time, e.g. "yesterday at noon ET"]
 Generate a standup report summarizing what was accomplished since $ARGUMENTS (default: "yesterday at noon ET" if no argument given).
 
 ## How to gather data
+
+### Step 1: Find repos and set time range
 
 1. **Find all repos the user works in.** Check recent git activity across known repo paths. Start with the current working directory, then check other repos mentioned in conversation context or memory.
 
@@ -19,39 +21,81 @@ Generate a standup report summarizing what was accomplished since $ARGUMENTS (de
    ```
    Adjust the date expression to match the user's time reference.
 
-3. **For each repo**, run:
-   ```bash
-   # Closed issues since the cutoff
-   gh issue list --state closed --search "closed:>$SINCE_ISO" --json number,title,closedAt --limit 50
+### Step 2: Pull issues, PRs, and line counts
 
-   # Merged PRs since the cutoff
-   gh pr list --state merged --search "merged:>$SINCE_ISO" --json number,title,mergedAt,additions,deletions --limit 50
+For each repo, run:
+```bash
+# Closed issues since the cutoff
+gh issue list --state closed --search "closed:>$SINCE_ISO" --json number,title,closedAt --limit 100
 
-   # Currently open PRs (in progress work)
-   gh pr list --state open --author @me --json number,title,createdAt,additions,deletions
-   ```
+# Merged PRs since the cutoff
+gh pr list --state merged --search "merged:>$SINCE_ISO" --json number,title,mergedAt,additions,deletions --limit 100
+
+# Currently open PRs (in progress work)
+gh pr list --state open --author @me --json number,title,createdAt,additions,deletions
+```
+
+### Step 3: Read PR bodies (CRITICAL — do not skip)
+
+**This is what makes the report useful.** Titles alone cannot convey business context.
+
+For every merged PR and every open PR (using the `number` field from Step 2's JSON output), read the PR body:
+```bash
+# For each PR number from Step 2:
+gh pr view "$PR_NUMBER" --json body,title,additions,deletions
+```
+
+Scan each PR body for:
+- **What the change enables** — the "so what" for the business
+- **Concrete numbers** — record counts, accuracy metrics, coverage stats, thresholds
+- **Which part of the system** this advances — classification, scraping, data pipeline, UI, etc.
+
+If a PR body is thin or template-only, extract the linked issue number (look for `Fixes #N`, `Closes #N`, or similar patterns in the PR body) and read the issue body:
+```bash
+gh issue view "$ISSUE_NUMBER" --json body,title
+```
+
+### Step 4: Identify business themes
+
+Group the PRs/issues into **2-5 business themes** based on what they collectively accomplish. A theme is a capability or milestone, not a file or module. Examples of good themes:
+- "Carrier classification pipeline is production-ready"
+- "Portal coverage map is now accurate and scrapable"
+- "Batch scraping infrastructure is ready to execute"
+
+Each theme should map to one section of the report.
 
 ## How to write the report
 
-Write from the user's perspective ("I" / "we") for direct paste into a standup channel or meeting.
-
-**Format:**
-
+### Opening line
+Lead with scale stats in a single line:
 ```text
-**Since [time reference]:**
+Since [time reference]: [N] PRs merged, [K] open, ~[M] issues closed, ~[L] lines added / ~[D] removed (~[net] net)
+```
+- Lines = sum additions and deletions across merged PRs separately, then compute net
 
-[2-4 bullet points summarizing what was accomplished in business logic terms — what capabilities were added, what problems were solved, what the system can now do that it couldn't before. Lead with the "so what" not the "what".]
+### Body: themed sections
 
-**In progress:**
-[1-2 bullets on open PRs or active work]
+For each business theme, write a short paragraph (2-5 sentences) that explains:
+1. **What the system can now do** that it couldn't before (lead with this)
+2. **Key concrete numbers** from the PR bodies — record counts, accuracy percentages, coverage stats, state counts, etc. These make the report credible and useful.
+3. **How it fits** into the broader goal or next step
 
-**Scale:** [N] issues closed, [M] PRs merged, [K] PRs open, ~[L] lines changed
+Name each theme with a bold one-liner that captures the business outcome, not the technical action. e.g., "**Carrier classification pipeline is production-ready**" not "**Added classification code**".
+
+### Open PRs
+Mention open PRs inline if they relate to a theme, or as a standalone line at the end:
+```text
+**Open PR:** #N (short description of what it does and why)
 ```
 
-**Writing rules:**
-- Frame accomplishments in terms of **business value and system capabilities**, not file names or technical implementation details
-- Group related issues/PRs into a single bullet when they serve the same goal
-- "~lines changed" = sum of additions + deletions across merged PRs (rough scale indicator)
-- Keep the whole report under 150 words — this is for a quick standup, not a changelog
-- Do NOT list every issue/PR individually unless there are fewer than 4 total
+### Closing synthesis
+End with a 1-2 sentence "net effect" that answers: "What can the system do now that it couldn't at the start of this period?" This is the single most important line — it's what a PM or exec would read if they read nothing else.
+
+## Writing rules
+- Frame everything in terms of **business value and system capabilities**, not file names or technical implementation
+- **Include concrete numbers** from PR bodies — these are what make the report useful vs. generic. Counts, percentages, thresholds, coverage metrics.
+- Group related issues/PRs into a single theme — never list PRs individually unless there are fewer than 4 total
+- Write from the user's perspective ("I" / "we") for direct paste into standup
+- No word limit — let the report be as long as it needs to be to convey meaningful context, but stay concise. Typical range: 150-400 words depending on volume of work.
 - Do NOT mention CR review cycles, code review tooling, or process details — focus on outcomes
+- Do NOT pad with filler or repeat the same point in different words
