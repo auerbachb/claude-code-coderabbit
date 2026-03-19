@@ -42,11 +42,23 @@ Subagents have a hardcoded **32K output token limit** that cannot be configured 
 
 **Orchestration rules:**
 - Parent agent launches Phase A subagents (can run in parallel across different PRs)
-- When Phase A completes, parent launches Phase B for that PR
+- **When Phase A completes, parent MUST launch Phase B immediately** — see "Phase A Completion Protocol" below
 - When Phase B reports clean, parent launches Phase C
 - **No hard limit on parallel Phase B PRs.** CR rate limiting is handled by the Greptile fallback for interim feedback, but merge readiness still requires the full gate: 1 clean Greptile + 2 clean CR passes.
 - **Track CR quota.** Maintain a running count of CR reviews consumed this hour. Increment when: pushing to a PR with CR configured (auto-review), or posting `@coderabbitai full review`. If count reaches 7 in the current hour, expect Greptile to be the primary reviewer for remaining PRs until the window resets.
 - Use judgment on small PRs: if CR only found 1-2 findings, a single subagent may handle the full lifecycle without hitting token limits
+
+### Phase A Completion Protocol (MANDATORY)
+
+**WHEN** a subagent returns and reports a PR was created or updated, **THEN** execute this checklist immediately — before any other work:
+
+1. **Verify the push happened.** Run `gh pr view N --json commits --jq '.commits[-1].oid'` and confirm the SHA matches what the subagent reported. If the push didn't happen, the subagent silently failed — report to user.
+2. **Check if reviewers already posted findings.** Fetch all 3 comment endpoints for the PR. If CR or Greptile already posted findings (common if the review was fast), include those findings in the Phase B prompt.
+3. **Launch Phase B within 60 seconds.** This is the immediate next action — queue it ahead of any other work (creating issues, reading files, responding to unrelated questions). If you cannot launch within 60 seconds due to tool throttling, tell the user why and when you will launch.
+4. **Update `session-state.json`.** Write the phase transition: PR moved from Phase A to Phase B, record the HEAD SHA, reset review state.
+5. **Report to user.** "Phase A complete for PR #N — fixes pushed (SHA `abc1234`). Phase B launched, polling for reviews."
+
+**Phase B launch is the highest-priority action after Phase A reports.** Do not start other substantive work until Phase B is launched for every PR that completed Phase A. If multiple Phase A agents complete simultaneously, launch Phase B for each one before doing anything else.
 
 ### Timestamped Status Updates (MANDATORY for parent agents)
 
@@ -113,12 +125,13 @@ Context compaction can happen at any time in long sessions. When it does, you lo
    ```
    Build a dashboard: PR number, HEAD SHA, last review state, last reviewer, pending action.
 3. **Check for stale background agents.** Any agents mentioned in the summary are likely dead (compaction killed their parent's awareness). Verify by checking if their expected outputs exist (commits pushed, comments posted).
-4. **Report to the user.** Post the reconstructed dashboard with a note: "Resuming after context compaction. Reconstructed state from GitHub. [N agents may need relaunching]."
-5. **Resume the monitoring loop.** Re-enter the polling cycle for any PRs still awaiting reviews.
+4. **Check Phase B coverage.** For every open PR, verify a Phase B agent is running or has completed. If any PR has unprocessed review findings and no active Phase B agent, launch Phase B immediately — this is the most common post-compaction failure.
+5. **Report to the user.** Post the reconstructed dashboard with a note: "Resuming after context compaction. Reconstructed state from GitHub. [N agents may need relaunching]."
+6. **Resume the monitoring loop.** Re-enter the polling cycle for any PRs still awaiting reviews.
 
 **Pre-compaction checkpointing (preventive):**
 
-When running a long monitoring session with multiple PRs, periodically write a status checkpoint to `~/.claude/session-state.json`. Write every 10 minutes or after any significant state change (phase transition, review received, agent launched). Format:
+When running a long monitoring session with multiple PRs, write a status checkpoint to `~/.claude/session-state.json`. **Write on EVERY phase transition** (A→B, B→C, agent launched, agent completed, review received) — not just every 10 minutes. The checkpoint write forces you to stop, assess state, and act on pending transitions. Format:
 ```json
 {
   "last_updated": "2026-03-16T16:00:00Z",
