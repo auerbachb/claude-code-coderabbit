@@ -35,7 +35,7 @@ For each lesson identified, determine:
 
 For each actionable, novel lesson:
 
-1. Write a memory file to `~/.claude/projects/{project}/memory/` with proper frontmatter. Derive the filename by slugifying the `name` field (lowercase, spaces to hyphens, e.g., `feedback_no_git_clean.md`):
+1. Write a memory file to `~/.claude/projects/{project}/memory/` with proper frontmatter. Derive the filename by slugifying the `name` field (lowercase, spaces/hyphens to underscores, prefixed by type, e.g., `feedback_no_git_clean.md`):
    ```markdown
    ---
    name: <descriptive_name>
