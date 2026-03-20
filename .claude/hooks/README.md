@@ -51,7 +51,7 @@ The heartbeat file is session-scoped (`/tmp/claude-heartbeat-$CLAUDE_SESSION_ID`
 
 ### Setup
 
-Add the following entries to your **global** `~/.claude/settings.json`:
+**Merge** the following entries into your **global** `~/.claude/settings.json` (don't replace existing hooks like `post-merge-pull.sh` — add these alongside them):
 
 ```json
 {
