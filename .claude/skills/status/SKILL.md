@@ -23,7 +23,7 @@ For each open PR, fetch review data from all 3 endpoints:
 ```bash
 # Reviews (approve/changes requested)
 gh api "repos/{owner}/{repo}/pulls/{N}/reviews?per_page=100" \
-  --jq '[.[] | select(.user.login == "coderabbitai[bot]" or .user.login == "greptile-apps[bot]") | {user: .user.login, state: .state, submitted: .submitted_at}] | last'
+  --jq '[.[] | select(.user.login == "coderabbitai[bot]" or .user.login == "greptile-apps[bot]") | {user: .user.login, state: .state, submitted: .submitted_at}] | if length == 0 then {} else last end'
 
 # Inline comments (unresolved findings)
 gh api "repos/{owner}/{repo}/pulls/{N}/comments?per_page=100" \

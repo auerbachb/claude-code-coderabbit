@@ -41,13 +41,7 @@ If the merge gate is NOT met, stop and tell the user exactly what's missing (e.g
 
 ### Step 3: Verify acceptance criteria
 
-Before merging, run the acceptance criteria check inline:
-
-1. Fetch the PR body via `gh pr view N --json body`
-2. Parse every checkbox in the **Test plan** section
-3. For each item, read the relevant source files and verify the criterion is met
-4. Check off passing items by editing the PR body (replace `- [ ]` with `- [x]`)
-5. If ANY item fails, stop and tell the user which items failed and why. Do NOT merge with unchecked boxes.
+Run the `/check-acceptance-criteria` skill logic for this PR. All Test Plan checkboxes must be checked off before proceeding. If any fail, stop and report — do NOT merge with unchecked boxes.
 
 ### Step 4: Squash merge
 
@@ -60,8 +54,17 @@ gh pr merge --squash --delete-branch
 If a work-log directory exists (detected at session start per work-log.md rules):
 
 1. Determine the cycle count by reconstructing from PR history:
-   - Fetch all reviews on `pulls/{N}/reviews` and all commits on `pulls/{N}/commits`
-   - Count each review with actionable findings followed by a fix commit = 1 cycle
+   ```bash
+   # Fetch reviews and commits
+   gh api "repos/{owner}/{repo}/pulls/{N}/reviews?per_page=100" \
+     --jq '[.[] | select(.user.login == "coderabbitai[bot]" or .user.login == "greptile-apps[bot]") | {state, submitted_at}]'
+   gh api "repos/{owner}/{repo}/pulls/{N}/commits?per_page=100" \
+     --jq '[.[] | {sha: .sha, date: .commit.committer.date}]'
+   ```
+   - For each review where `state == "CHANGES_REQUESTED"` (or has inline comments with actionable findings), check if any commit has `committed_date > review.submitted_at`
+   - If yes, that review-then-fix pair = 1 cycle. Multiple commits after a single review count as 1 cycle.
+   - Include reviews from both `coderabbitai[bot]` and `greptile-apps[bot]`
+   - Clean passes and confirmation reviews do not count
 2. Append a merge entry to today's session log:
    ```
    - {time} ET — PR #{N} merged (Issue #{M}): {1-line summary} [opened: {open_time}, merged: {merge_time}, cycles: {count}]

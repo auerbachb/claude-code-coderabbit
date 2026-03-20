@@ -49,7 +49,7 @@ For each actionable, novel lesson:
    **How to apply:** <when and where this should change behavior>
    ```
 
-2. Add a pointer to `MEMORY.md`
+2. Add a pointer to `MEMORY.md` as a single bullet: `- [filename.md](filename.md) — one-line description`
 
 ### Step 4: Output summary
 
