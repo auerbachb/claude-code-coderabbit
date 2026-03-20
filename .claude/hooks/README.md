@@ -37,3 +37,4 @@ Replace `/absolute/path/to/claude-code-coderabbit` with the actual path to your 
 
 - `jq` must be installed (`brew install jq` on macOS)
 - The repo must have a git remote named `origin` with a `main` branch
+- The hook script must be executable: `chmod +x .claude/hooks/post-merge-pull.sh` (the repo tracks it as executable, but some systems may strip the bit on checkout)
