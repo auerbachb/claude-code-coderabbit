@@ -25,9 +25,9 @@ For each open PR, fetch review data from all 3 endpoints:
 gh api "repos/{owner}/{repo}/pulls/{N}/reviews?per_page=100" \
   --jq '[.[] | select(.user.login == "coderabbitai[bot]" or .user.login == "greptile-apps[bot]") | {user: .user.login, state: .state, submitted: .submitted_at}] | sort_by(.submitted) | if length == 0 then {} else last end'
 
-# Inline comments (unresolved findings)
-gh api "repos/{owner}/{repo}/pulls/{N}/comments?per_page=100" \
-  --jq '[.[] | select(.user.login == "coderabbitai[bot]" or .user.login == "greptile-apps[bot]")] | length'
+# Unresolved findings (use GraphQL to get only unresolved threads)
+gh api graphql -f query='query { repository(owner: "{owner}", name: "{repo}") { pullRequest(number: {N}) { reviewThreads(first: 100) { nodes { isResolved comments(first: 1) { nodes { author { login } } } } } } } }' \
+  --jq '[.data.repository.pullRequest.reviewThreads.nodes[] | select(.isResolved == false)] | length'
 
 # Issue comments (summary, ack)
 gh api "repos/{owner}/{repo}/issues/{N}/comments?per_page=100" \
@@ -66,11 +66,11 @@ If `~/.claude/session-state.json` exists, cross-reference it:
 Output a table like:
 
 ```
-PR    | Title                          | Reviewer | State          | Findings | Updated
-------|--------------------------------|----------|----------------|----------|--------
-#40   | Add slash commands             | CR       | Review pending | 0        | 2 min ago
-#38   | Fix auth middleware            | Greptile | Has findings   | 3        | 15 min ago
-#35   | Add post-merge hook            | CR       | Clean          | 0        | 1 hr ago
+PR    | Title                          | Reviewer | State          | Findings | HEAD SHA | Updated
+------|--------------------------------|----------|----------------|----------|----------|--------
+#40   | Add slash commands             | CR       | Review pending | 0        | 517690c  | 2 min ago
+#38   | Fix auth middleware            | Greptile | Has findings   | 3        | d0e4fef  | 15 min ago
+#35   | Add post-merge hook            | CR       | Clean          | 0        | 7b2cfbf  | 1 hr ago
 ```
 
 Below the table, add:
