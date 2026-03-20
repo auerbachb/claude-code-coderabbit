@@ -3,7 +3,7 @@
 
 > **Always:** Poll all 3 endpoints + check-runs every cycle. Use `per_page=100`. Filter by `coderabbitai[bot]`. Batch fixes into one commit. Reply to every thread. Resolve threads via GraphQL.
 > **Ask first:** Merging — always ask the user.
-> **Never:** Poll only 1-2 endpoints. Use bare `coderabbitai` without `[bot]`. Push per-finding. Trigger `@coderabbitai full review` more than twice/hour. Trigger Greptile proactively (only on CR failure). Merge without meeting the merge gate (2 clean CR or 1 clean G).
+> **Never:** Poll only 1-2 endpoints. Use bare `coderabbitai` without `[bot]`. Push per-finding. Trigger `@coderabbitai full review` more than twice per PR per hour. Trigger Greptile proactively (only on CR failure). Merge without meeting the merge gate (2 clean CR or 1 clean G).
 
 > **This is the fallback review workflow.** It runs after you push and create a PR. If the local review loop was thorough, CR should find few or no issues here. But edge cases exist (e.g., CI-only context, cross-file interactions the local review missed), so always let this loop run.
 
@@ -41,12 +41,12 @@ After pushing a commit to a PR, automatically enter the CR review loop:
     --jq '.[] | select(.context | test("CodeRabbit"; "i")) | {context, state, description}'
   ```
   - **Completion signal:** `status: "completed"` with `conclusion: "success"` = review done (visible as "CodeRabbit — Review completed" in the PR's CI checks box). This is the definitive signal, especially for clean passes.
-  - **Fast-path rate limit detection:** If EITHER endpoint shows rate limiting — check-run has `conclusion: "failure"` with `output.title` containing "rate limit" (case-insensitive), OR commit status has `state: "failure"`/`state: "error"` with `description` containing "rate limit" — **trigger Greptile IMMEDIATELY.** Do not wait 7 minutes. This catches rate limits within ~60-120 seconds of pushing. **Once Greptile is triggered for a PR, that PR stays on Greptile for all subsequent review cycles — do not fall back to CR.**
+  - **Fast-path rate limit detection:** If EITHER endpoint shows rate limiting — check-run has `conclusion: "failure"` with `output.title` containing "rate limit" (case-insensitive), OR commit status has `state: "failure"`/`state: "error"` with `description` containing "rate limit" — **trigger Greptile IMMEDIATELY.** Do not wait 7 minutes. This catches rate limits within ~60-120 seconds of pushing. Sticky assignment applies (see below).
   - **Do NOT confuse the ack with completion.** The "Actions performed — Full review triggered" issue comment means CR **started** reviewing — it does NOT mean the review is finished. The CI check "CodeRabbit — Review completed" is what signals actual completion.
 - **CR's GitHub username is `coderabbitai[bot]` (with the `[bot]` suffix).** Always filter by `.user.login == "coderabbitai[bot]"` — NOT bare `coderabbitai`. Using the wrong username will silently miss all CR comments.
 - Track the **highest comment ID** seen so far across all three endpoints. Any comment from `coderabbitai[bot]` with an ID greater than the watermark is a new finding that needs attention.
 - If CR responds, process immediately
-- **Hard timeout: 7 minutes.** If CR has not delivered a review after 7 minutes of polling, stop waiting and trigger **Greptile**. Do NOT keep polling — it wastes tokens and risks session timeout. **Once Greptile is triggered, that PR stays on Greptile permanently — do not switch back to CR.**
+- **Hard timeout: 7 minutes.** If CR has not delivered a review after 7 minutes of polling, stop waiting and trigger **Greptile**. Do NOT keep polling — it wastes tokens and risks session timeout. Sticky assignment applies (see below).
 
 ### Timeout & Fallback — Two Trigger Paths to Greptile
 
