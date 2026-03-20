@@ -18,7 +18,8 @@ Prevent accidental `.env` deletion and other destructive operations from the rep
 When spawning subagents, include this warning in the prompt:
 
 ```
-SAFETY: Do NOT modify or delete .env files. Do NOT run git clean. Do NOT run destructive
-commands (rm -rf, git checkout ., git reset --hard) in the root repo directory. Stay in
-your worktree directory at all times.
+SAFETY: Do NOT delete, overwrite, move, or modify .env files — anywhere, any repo.
+Do NOT run git clean in ANY directory. Do NOT run destructive commands (rm -rf, rm,
+git checkout ., git stash, git reset --hard) in the root repo directory. Stay in your
+worktree directory at all times.
 ```
