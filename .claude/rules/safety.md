@@ -4,7 +4,7 @@
 > **Ask first:** Never — these are absolute prohibitions with no exceptions.
 > **Never:** Delete `.env` files. Run `git clean`. Run destructive commands in the root repo. Operate in the root repo directory.
 
-These rules exist because a thread accidentally deleted a repo's `.env` file by running destructive commands in the root repo directory instead of staying in its worktree. The user only caught it because the file happened to be open in their IDE.
+Prevent accidental `.env` deletion and other destructive operations from the repo root. All work happens in worktrees.
 
 ## Absolute Rules (no exceptions)
 
