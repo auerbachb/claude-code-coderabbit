@@ -46,7 +46,7 @@ Subagents have a hardcoded **32K output token limit** that cannot be configured 
 - Parent agent launches Phase A subagents (can run in parallel across different PRs)
 - **When Phase A completes, parent MUST launch Phase B immediately** — see "Phase A Completion Protocol" below
 - When Phase B reports clean, parent launches Phase C
-- **No hard limit on parallel Phase B PRs.** CR rate limiting is handled by the Greptile fallback. Each PR tracks its own reviewer assignment: CR-only PRs need 2 clean CR passes; Greptile PRs need 1 clean G pass.
+- **Soft limit on parallel Phase B PRs:** aim for 3-4 active CR-polled PRs at once to reduce CR throttling and unnecessary Greptile fallback cost. Each PR tracks its own reviewer assignment: CR-only PRs need 2 clean CR passes; Greptile PRs need 1 clean G pass.
 - **Track CR quota.** Maintain a running count of CR reviews consumed this hour. Increment when: pushing to a PR with CR configured (auto-review), or posting `@coderabbitai full review`. If count reaches 7 in the current hour, expect Greptile to be the primary reviewer for remaining PRs until the window resets.
 - Use judgment on small PRs: if CR only found 1-2 findings, a single subagent may handle the full lifecycle without hitting token limits
 
