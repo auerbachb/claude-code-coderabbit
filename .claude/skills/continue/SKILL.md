@@ -98,11 +98,12 @@ PR_JSON=$(gh pr view --json number,title,body,state 2>/dev/null)
     ```bash
     ISSUE_NUM=$(echo "$BRANCH" | grep -oE 'issue-([0-9]+)' | grep -oE '[0-9]+')
     ```
-  - Read the issue body for context:
+  - If `ISSUE_NUM` is empty (branch doesn't follow `issue-N-*` pattern): create the PR without a `Closes #N` footer. Note to user: "No linked issue detected from branch name."
+  - If `ISSUE_NUM` is set: read the issue body for context:
     ```bash
     gh issue view $ISSUE_NUM --json title,body 2>/dev/null
     ```
-  - Create the PR with a proper body including `Closes #N` and a Test plan section.
+  - Create the PR with a proper body (including `Closes #N` if issue was found) and a Test plan section.
 - If the PR is merged/closed: `[DONE]` — PR is already merged. Nothing to continue.
 
 ---
@@ -319,4 +320,4 @@ Status: Ready to merge — want me to squash and merge?
 ```
 
 If the merge gate is met and all AC pass, ask:
-"Reviews clean, all AC verified and checked off. Want me to squash and merge and delete the branch, or do you want to review the diff yourself first?"
+"Reviews clean, all AC verified and checked off. Want me to squash and merge (`gh pr merge --squash --delete-branch`) and delete the branch, or do you want to review the diff yourself first?"
