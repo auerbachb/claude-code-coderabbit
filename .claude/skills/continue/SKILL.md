@@ -1,6 +1,6 @@
 ---
 name: continue
-description: Detect where the review workflow left off and resume from the next incomplete step. Handles local CR review, PR creation, review polling, feedback processing, and merge readiness.
+description: Resume an interrupted or stalled review workflow. Detects where the agent left off — local CR review, push, PR creation, review polling, CR/Greptile feedback processing, thread resolution, merge gate verification, or acceptance criteria — and continues from the next incomplete step automatically.
 disable-model-invocation: true
 ---
 
@@ -91,9 +91,10 @@ git log --oneline origin/$BRANCH..$BRANCH 2>/dev/null | wc -l
 
 ```bash
 PR_JSON=$(gh pr view --json number,title,body,state 2>/dev/null)
+PR_NUM=$(echo "$PR_JSON" | jq -r '.number // empty')
 ```
 
-- If a PR exists and is open: `[DONE]` — PR #{number} exists.
+- If a PR exists and is open: `[DONE]` — PR #$PR_NUM exists.
 - If no PR exists: `[ACTION]` — Create one.
   - Look for an issue number from the branch name (pattern: `issue-N-*`):
     ```bash
@@ -104,7 +105,10 @@ PR_JSON=$(gh pr view --json number,title,body,state 2>/dev/null)
     ```bash
     gh issue view $ISSUE_NUM --json title,body 2>/dev/null
     ```
-  - Create the PR with a proper body (including `Closes #N` if issue was found) and a Test plan section.
+  - Create the PR with a proper body (including `Closes #N` if issue was found) and a Test plan section. After creation, capture the PR number:
+    ```bash
+    PR_NUM=$(gh pr view --json number --jq '.number')
+    ```
 - If the PR is merged/closed: `[DONE]` — PR is already merged. Nothing to continue.
 
 ---
