@@ -71,9 +71,10 @@ $CR_BIN review --prompt-only
 
 ## Step 3: Push to remote
 
-First check if the remote branch exists:
+First refresh remote refs and check if the remote branch exists:
 ```bash
-git rev-parse --verify origin/$BRANCH 2>/dev/null
+git fetch origin "$BRANCH" --quiet 2>/dev/null || true
+git ls-remote --exit-code --heads origin "$BRANCH" >/dev/null 2>&1
 ```
 
 - If the remote branch **does not exist**: `[ACTION]` — Pushing new branch:
@@ -118,29 +119,7 @@ PR_NUM=$(echo "$PR_JSON" | jq -r '.number // empty')
 
 ---
 
-## Step 5: Trigger Greptile alongside CR
-
-After pushing (Step 3) or creating a PR (Step 4), check if Greptile has already been triggered **for the current HEAD**:
-
-```bash
-# Get the current HEAD SHA and its commit timestamp
-HEAD_SHA=$(gh pr view $PR_NUM --json commits --jq '.commits[-1].oid')
-HEAD_TIME=$(gh api "repos/{owner}/{repo}/commits/$HEAD_SHA" --jq '.commit.committer.date')
-
-# Find @greptileai trigger comments posted AFTER the current HEAD commit
-gh api "repos/{owner}/{repo}/issues/{N}/comments?per_page=100" \
-  --jq "[.[] | select(.body | test(\"@greptileai\")) | select(.created_at >= \"$HEAD_TIME\")] | length"
-```
-
-- If no `@greptileai` trigger exists after the current HEAD commit: `[ACTION]` — Trigger Greptile:
-  ```bash
-  gh pr comment $PR_NUM --body "@greptileai"
-  ```
-- If already triggered for this HEAD: `[DONE]` — Greptile already triggered for current SHA.
-
----
-
-## Step 6: Determine reviewer ownership
+## Step 5: Determine reviewer ownership
 
 Check which reviewer owns this PR:
 
@@ -148,10 +127,10 @@ Check which reviewer owns this PR:
 # Check session-state first
 cat ~/.claude/session-state.json 2>/dev/null | jq -r ".prs.\"$PR_NUM\".reviewer // empty"
 
-# If no session-state, check review history
-gh api "repos/{owner}/{repo}/pulls/{N}/comments?per_page=100" --jq '[.[] | .user.login] | unique'
-gh api "repos/{owner}/{repo}/pulls/{N}/reviews?per_page=100" --jq '[.[] | .user.login] | unique'
-gh api "repos/{owner}/{repo}/issues/{N}/comments?per_page=100" --jq '[.[] | .user.login] | unique'
+# If no session-state, check review history (paginate to catch all activity)
+gh api --paginate "repos/{owner}/{repo}/pulls/{N}/comments?per_page=100" --jq '.[].user.login' | sort -u
+gh api --paginate "repos/{owner}/{repo}/pulls/{N}/reviews?per_page=100" --jq '.[].user.login' | sort -u
+gh api --paginate "repos/{owner}/{repo}/issues/{N}/comments?per_page=100" --jq '.[].user.login' | sort -u
 ```
 
 - If `greptile-apps[bot]` has posted reviews: PR is on **Greptile** (sticky assignment).
@@ -161,7 +140,7 @@ Output: `Reviewer: CR` or `Reviewer: Greptile`
 
 ---
 
-## Step 7: Check for review response
+## Step 6: Check for review response
 
 ### If PR is on CR:
 
@@ -178,19 +157,21 @@ gh api "repos/{owner}/{repo}/commits/$SHA/statuses" \
   --jq '.[] | select(.context | test("CodeRabbit"; "i")) | {state: .state, description: .description}'
 ```
 
-**Rate limit fast-path:** If check-run shows `conclusion: "failure"` with title containing "rate limit" (case-insensitive), OR status shows `state: "failure"`/`state: "error"` with description containing "rate limit":
+**Rate limit detection:** If check-run shows `conclusion: "failure"` with title containing "rate limit" (case-insensitive), OR status shows `state: "failure"`/`state: "error"` with description containing "rate limit":
 - `[ACTION]` — CR is rate-limited. Switching to Greptile.
 - Trigger `@greptileai` on the PR if not already done.
 - This PR is now on Greptile permanently (sticky assignment).
 - Go to the Greptile section below.
 
 **Review completion:** If check-run shows `status: "completed"` with `conclusion: "success"`:
-- CR has finished reviewing. Check for findings (Step 8).
+- CR has finished reviewing. Check for findings (Step 7).
 
-**Review pending:** If no completion signal:
-- `[ACTION]` — CR review is still pending. Polling every 60 seconds (7-minute timeout, then Greptile fallback).
+**Review pending:** If no completion signal and no rate-limit signal:
+- `[ACTION]` — CR review is still pending. Polling every 60 seconds (7-minute timeout).
 - Poll all 3 endpoints each cycle for new comments from `coderabbitai[bot]`.
-- After 7 minutes with no review content: trigger Greptile (sticky assignment).
+- Check for rate-limit signals on every poll cycle.
+- After 7 minutes with no review content and no rate-limit signal: `[BLOCKED]` — CR has not responded. Tell the user and ask whether to wait longer or trigger Greptile manually.
+- **Only switch to Greptile on a clear rate-limit signal.** Do not auto-trigger Greptile on timeout alone.
 
 ### If PR is on Greptile:
 
@@ -210,7 +191,7 @@ gh api "repos/{owner}/{repo}/issues/{N}/comments?per_page=100" \
 
 ---
 
-## Step 8: Check for unresolved findings
+## Step 7: Check for unresolved findings
 
 Fetch unresolved review threads (first 100 — sufficient for most PRs; if a PR has >100 threads, paginate using `pageInfo.endCursor`):
 ```bash
@@ -221,7 +202,7 @@ gh api graphql -f query='query {
         nodes {
           id
           isResolved
-          comments(first: 5) {
+          comments(first: 100) {
             nodes {
               body
               author { login }
@@ -258,35 +239,46 @@ gh api "repos/{owner}/{repo}/issues/{N}/comments?per_page=100" \
      ```bash
      gh api graphql -f query='mutation { resolveReviewThread(input: {threadId: "{thread_id}"}) { thread { isResolved } } }'
      ```
-  7. After fixing, go back to **Step 7** to wait for the next review.
+  7. After fixing, go back to **Step 6** to wait for the next review.
 - If no unresolved findings: `[DONE]` — No unresolved findings.
 
 ---
 
-## Step 9: Check merge gate
+## Step 8: Check merge gate
 
 ### If PR is on CR (Greptile never triggered):
 
-Need **2 clean CR reviews**. Check:
-```bash
-gh api "repos/{owner}/{repo}/pulls/{N}/reviews?per_page=100" \
-  --jq '[.[] | select(.user.login == "coderabbitai[bot]") | {state: .state, submitted_at: .submitted_at}] | sort_by(.submitted_at) | reverse | .[0:2]'
-```
+Need **2 consecutive clean CR passes**. A pass is clean only when ALL of:
+1. CodeRabbit check-run on current HEAD shows `status: "completed"` + `conclusion: "success"`
+2. Step 8 reports zero unresolved CR findings
+3. No new CR review comments appeared after the check-run completed
 
-Also verify the CodeRabbit check-run is green on the current HEAD:
+Track a `cr_clean_streak` counter:
+- Increment by 1 after a verified clean pass
+- Reset to 0 when findings are present or a new commit is pushed
+- Merge gate met when `cr_clean_streak >= 2`
+
+Check latest CR signals:
 ```bash
 SHA=$(gh pr view $PR_NUM --json commits --jq '.commits[-1].oid')
+
+# Check-run must be green on current HEAD
 gh api "repos/{owner}/{repo}/commits/$SHA/check-runs" \
   --jq '.check_runs[] | select(.name == "CodeRabbit") | {status, conclusion}'
+
+# Verify no unresolved findings from CR
+gh api graphql -f query='query { repository(owner: "{owner}", name: "{repo}") { pullRequest(number: {N}) { reviewThreads(first: 100) { nodes { isResolved comments(first: 1) { nodes { author { login } } } } } } } }' \
+  --jq '[.data.repository.pullRequest.reviewThreads.nodes[] | select(.isResolved == false) | select(.comments.nodes[0].author.login == "coderabbitai[bot]")] | length'
 ```
 
-- If 2 clean CR reviews exist on recent SHAs with no findings: `[DONE]` — Merge gate satisfied (2 clean CR reviews).
-- If 1 clean review: `[ACTION]` — Triggering confirmation pass:
+- If check-run is green AND zero unresolved CR findings: this is a clean pass. Increment `cr_clean_streak`.
+- If `cr_clean_streak >= 2`: `[DONE]` — Merge gate satisfied (2 consecutive clean CR passes).
+- If `cr_clean_streak == 1`: `[ACTION]` — One clean pass confirmed. Triggering confirmation review:
   ```bash
   gh pr comment $PR_NUM --body "@coderabbitai full review"
   ```
-  Go back to **Step 7** to poll for the confirmation review.
-- If 0 clean reviews or latest review had findings: `[ACTION]` — Merge gate not met. Go back to **Step 7**.
+  Go back to **Step 6** to poll for the confirmation review.
+- If check-run has findings or is not green: `[ACTION]` — Merge gate not met. Reset streak. Go back to **Step 6**.
 
 ### If PR is on Greptile:
 
@@ -299,12 +291,12 @@ Severity-gated merge gate:
     ```bash
     gh pr comment $PR_NUM --body "@greptileai"
     ```
-    Go back to **Step 7**.
+    Go back to **Step 6**.
   - If 3 reviews already consumed: `[BLOCKED]` — Greptile review budget exhausted. Performing self-review. Report blocker to user.
 
 ---
 
-## Step 10: Verify acceptance criteria
+## Step 9: Verify acceptance criteria
 
 Run the acceptance criteria check (same logic as `/check-acceptance-criteria`):
 
@@ -319,7 +311,7 @@ Run the acceptance criteria check (same logic as `/check-acceptance-criteria`):
 
 ---
 
-## Step 11: Report completion
+## Step 10: Report completion
 
 Output a summary:
 
