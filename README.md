@@ -72,7 +72,7 @@ The config is split into a root `CLAUDE.md` (~60 lines) and topic-specific rule 
 
 | File | What it does |
 |---|---|
-| **`global-settings.json`** | Global user settings (`~/.claude/settings.json`) — hooks, env vars, plugin marketplaces. Update absolute paths before copying. |
+| **`global-settings.json`** | Global user settings (`~/.claude/settings.json`) — hooks, env vars, plugin marketplaces. Copy first, then update absolute paths in the copied file. |
 | **`CLAUDE.md`** | Worktree policy, PR & issue workflow, branch naming, squash-merge, acceptance criteria |
 | **`.claude/rules/issue-planning.md`** | Issue creation flow, CR plan integration, 5-step planning flow |
 | **`.claude/rules/cr-local-review.md`** | Primary review workflow — runs CR locally via CLI before pushing, instant feedback, no PR noise |
