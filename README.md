@@ -33,9 +33,14 @@ cp CLAUDE.md ~/.claude/CLAUDE.md
 mkdir -p ~/.claude/rules
 cp -R .claude/rules/. ~/.claude/rules/
 
+# Copy global settings (hooks, env vars, marketplace config)
+cp global-settings.json ~/.claude/settings.json
+# Edit ~/.claude/settings.json and replace /path/to/claude-code-config/ with your actual clone path
+
 # Or symlink (auto-updates when you pull changes)
-ln -sfn /path/to/claude-code-coderabbit/CLAUDE.md ~/.claude/CLAUDE.md
-ln -sfn /path/to/claude-code-coderabbit/.claude/rules ~/.claude/rules
+ln -sfn /path/to/claude-code-config/CLAUDE.md ~/.claude/CLAUDE.md
+ln -sfn /path/to/claude-code-config/.claude/rules ~/.claude/rules
+# Note: global-settings.json must be copied, not symlinked (needs per-user path edits)
 ```
 
 ### Option 2: Per-project config
@@ -66,6 +71,7 @@ The config is split into a root `CLAUDE.md` (~60 lines) and topic-specific rule 
 
 | File | What it does |
 |---|---|
+| **`global-settings.json`** | Global user settings (`~/.claude/settings.json`) — hooks, env vars, plugin marketplaces. Copy first, then update absolute paths in the copied file. |
 | **`CLAUDE.md`** | Worktree policy, PR & issue workflow, branch naming, squash-merge, acceptance criteria |
 | **`.claude/rules/issue-planning.md`** | Issue creation flow, CR plan integration, 5-step planning flow |
 | **`.claude/rules/cr-local-review.md`** | Primary review workflow — runs CR locally via CLI before pushing, instant feedback, no PR noise |
