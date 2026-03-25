@@ -56,7 +56,7 @@ Filter by `greptile-apps[bot]` (with `[bot]` suffix).
 
 **Timeout:** 5 minutes (typical response: 1-3 min). No response after 5 min = timeout.
 
-**Completion detection:** 👍 reaction or review comments from `greptile-apps[bot]` = done. No comments + no 👍 after 5 min = timeout.
+**Completion detection:** 👍 or review comments from `greptile-apps[bot]` = done. 😕 = failed (stop polling, report failure). No signal after 5 min = timeout.
 
 ## Processing Greptile Findings
 
