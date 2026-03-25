@@ -8,7 +8,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/absolute/path/to/your-repo/.claude/hooks/silence-detector-ack.sh",
+            "command": "/path/to/claude-code-config/.claude/hooks/silence-detector-ack.sh",
             "timeout": 5
           }
         ]
@@ -20,7 +20,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/absolute/path/to/your-repo/.claude/hooks/post-merge-pull.sh",
+            "command": "/path/to/claude-code-config/.claude/hooks/post-merge-pull.sh",
             "timeout": 15
           }
         ]
@@ -29,7 +29,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/absolute/path/to/your-repo/.claude/hooks/silence-detector.sh",
+            "command": "/path/to/claude-code-config/.claude/hooks/silence-detector.sh",
             "timeout": 5
           }
         ]
