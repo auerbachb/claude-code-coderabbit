@@ -34,8 +34,8 @@ mkdir -p ~/.claude/rules
 cp -R .claude/rules/. ~/.claude/rules/
 
 # Copy global settings (hooks, env vars, marketplace config)
-# Review and update absolute paths in the hooks section first
 cp global-settings.json ~/.claude/settings.json
+# Edit ~/.claude/settings.json and replace /absolute/path/to/your-repo/ with your actual paths
 
 # Or symlink (auto-updates when you pull changes)
 ln -sfn /path/to/claude-code-config/CLAUDE.md ~/.claude/CLAUDE.md
