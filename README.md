@@ -65,6 +65,32 @@ Claude Code loads `CLAUDE.md` from the project root first, then `~/.claude/CLAUD
   coderabbit auth login
   ```
 
+## Permissions and settings
+
+### Project-level settings (`.claude/settings.json`)
+
+This repo includes a `.claude/settings.json` with broad permission allow rules. This ensures Claude Code can operate autonomously without prompting for every tool call — including in **git worktrees**, which have a [known bug](https://github.com/anthropics/claude-code/issues/28248) where bypass permissions set at the CLI don't reliably carry over.
+
+The project-level settings apply to anyone working in this repo. They don't affect other repos.
+
+### Global settings (`~/.claude/settings.json`)
+
+For the same autonomous behavior across **all** your repos (and all worktrees), copy the permissions block from `global-settings.json` into your `~/.claude/settings.json`. The `global-settings.json` file also contains hook configurations that must be copied to `~/.claude/settings.json` — hooks only work from the global settings file.
+
+**After copying `global-settings.json`, update the hook paths.** Replace `/path/to/claude-code-config/` with the actual path to your clone of this repo. If you rename or move the repo, the hooks will silently fail — this is a common gotcha (e.g., the rename from `claude-code-coderabbit` to `claude-code-config` broke all hook paths).
+
+### Hooks
+
+The global settings configure three hooks:
+
+| Hook | Trigger | Purpose |
+|------|---------|---------|
+| `silence-detector-ack.sh` | Stop (after each response) | Touches a heartbeat file so the detector knows the agent is alive |
+| `silence-detector.sh` | PostToolUse (after every tool call) | Checks if the agent has been silent >5 minutes; injects a warning if so |
+| `post-merge-pull.sh` | PostToolUse on Bash | Auto-pulls main after squash merges to keep local main in sync |
+
+All three hook scripts live in `.claude/hooks/` in this repo. The global settings must reference their **absolute paths** on your machine.
+
 ## What's in the config
 
 The config is split into a root `CLAUDE.md` (~60 lines) and topic-specific rule files in `.claude/rules/` for better adherence ([Anthropic best practices](https://docs.anthropic.com/en/docs/claude-code/best-practices), [memory docs](https://docs.anthropic.com/en/docs/claude-code/memory)). All `.md` files in `.claude/rules/` load automatically — including subdirectories, so you can organize further as the rules grow.
