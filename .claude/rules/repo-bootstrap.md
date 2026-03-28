@@ -2,7 +2,7 @@
 
 > **Always:** Check for required workflows at session start. Add missing ones before any code work.
 > **Ask first:** Never — bootstrapping is autonomous and non-destructive.
-> **Never:** Skip the check. Modify existing workflows that already exist.
+> **Never:** Skip the check. Modify workflows that already exist.
 
 ## Session Start: Check Required Workflows
 
