@@ -124,37 +124,37 @@ Custom skills (in `.claude/skills/`) that you can invoke during a session. Liste
 
 - **Why:** You need a quick view of all open PRs without manually checking GitHub.
 - **When:** At the start of a session, after context compaction, or whenever you want to see what's in flight.
-- **How:** Queries GitHub for all open PRs, fetches review state from all three comment endpoints, checks CodeRabbit and fallback reviewer status, and outputs a formatted dashboard table with reviewer, findings count, HEAD SHA, and blockers.
+- **How:** Queries GitHub for all open PRs and outputs a dashboard with review state, findings, and blockers.
 
 ### `/continue`
 
 - **Why:** Long-running review workflows get interrupted — context compaction, session timeouts, or manual pauses. Picking up where you left off manually is error-prone.
 - **When:** When resuming work on a feature branch that has an in-progress PR, or after any interruption to the review cycle.
-- **How:** Walks through the full review lifecycle (uncommitted changes, local CR review, push, PR creation, review polling, finding resolution, merge gate, acceptance criteria) and resumes at the first incomplete step. Outputs `[DONE]`/`[ACTION]`/`[BLOCKED]`/`[SKIP]` for each step.
+- **How:** Walks through the full review lifecycle and resumes at the first incomplete step, outputting `[DONE]`/`[ACTION]`/`[BLOCKED]`/`[SKIP]` status.
 
 ### `/check-acceptance-criteria`
 
 - **Why:** PRs should never be merged with unchecked Test Plan boxes. Manually verifying each criterion against code is tedious and easy to skip.
 - **When:** After reviews are clean and before merging, or anytime you want to verify the current state of acceptance criteria.
-- **How:** Parses every checkbox in the PR's Test Plan section, reads the relevant source files to verify each criterion, checks off passing items by editing the PR body, and reports any failures.
+- **How:** Verifies each Test Plan checkbox against source files, checks off passing items, and reports failures.
 
 ### `/merge`
 
 - **Why:** Merging involves multiple verification steps (merge gate, acceptance criteria, work-log update) that are easy to skip or do out of order.
 - **When:** After reviews are clean and all acceptance criteria pass.
-- **How:** Verifies the merge gate (2 clean CR reviews or fallback reviewer severity gate), runs acceptance criteria verification, squash merges with branch deletion, and logs the merge to the daily work log with cycle count and timestamps.
+- **How:** Verifies merge gate and acceptance criteria, squash merges with branch deletion, and logs to the daily work log.
 
 ### `/lessons`
 
 - **Why:** Insights from a session (workflow friction, edge cases, surprises) are lost when the conversation ends.
 - **When:** At the end of a session, before closing the thread.
-- **How:** Reviews the session for patterns and surprises, categorizes actionable lessons by memory type (feedback/project/user), checks for duplicates against existing memory, and saves novel lessons to the memory system.
+- **How:** Reviews session for patterns, categorizes actionable lessons, checks for duplicates, and saves to memory.
 
 ### `/standup`
 
 - **Why:** Writing standup summaries from raw PR titles misses the business context buried in PR bodies and issue descriptions.
 - **When:** Before a standup meeting, or whenever you need a summary of recent work.
-- **How:** Gathers merged PRs, closed issues, and open PRs since a given time (default: yesterday noon ET), reads each PR body for business context and concrete numbers, groups work into 2-5 business themes, and outputs a paste-ready standup report framed around system capabilities rather than file changes.
+- **How:** Gathers PRs and issues since a given time (default: yesterday noon ET), extracts business context, and outputs a thematic standup report.
 
 ## Customizing
 
