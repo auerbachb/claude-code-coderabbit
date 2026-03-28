@@ -37,7 +37,7 @@ Auto-review on PR open is disabled via a "Labels: includes: `greptile`" filter i
 
 Greptile charges $1/review beyond the 50/month included quota. To prevent runaway costs when many PRs are processed in parallel, enforce a hard daily cap.
 
-- **Default budget: 40 reviews/day** (adjustable — set `budget` field in `session-state.json`). Adjust the default based on current pricing.
+- **Default budget: 40 reviews/day** (adjustable — set `budget` field in `session-state.json`).
 - **Tracking:** The `greptile_daily` section in `~/.claude/session-state.json` tracks `reviews_used`, `date` (YYYY-MM-DD in ET timezone), and `budget`. See `subagent-orchestration.md` for the schema.
 - **Before EVERY `@greptileai` trigger**, read `greptile_daily` from session state and run the budget check:
   1. Get the current date in ET: `TZ='America/New_York' date +'%Y-%m-%d'`
@@ -46,7 +46,7 @@ Greptile charges $1/review beyond the 50/month included quota. To prevent runawa
   4. Otherwise, increment `reviews_used` by 1 and write the updated `greptile_daily` back to session state **before** posting the `@greptileai` comment
 - **Budget exhaustion fallback:** Perform a self-review instead. Self-review does NOT satisfy the merge gate. Report the blocker to the user:
   > "Greptile budget exhausted ({reviews_used}/{budget}). PR #{N} falling back to self-review — merge blocked until manual review or budget resets tomorrow."
-- **This check applies to ALL Greptile trigger points:** CR GitHub fallback (fast-path and slow-path), CR local post-push trigger, Phase B subagent Greptile polling, and per-PR re-reviews. No `@greptileai` comment may be posted without passing the budget check first.
+- **This check applies to all Greptile trigger points** (CR GitHub fallback, local post-push, Phase B polling, and per-PR re-reviews). No `@greptileai` comment may be posted without passing the budget check first.
 
 ## When to Trigger Greptile
 
