@@ -89,4 +89,4 @@ else:
 
 ## Startup Hook (Optional)
 
-If this issue recurs frequently, add a startup hook to `global-settings.json` that auto-repairs the flags. This is not included by default because the issue is intermittent and the manual fix is fast. To add one, create a hook script and register it in the `PreToolUse` or `Stop` hook array in `global-settings.json`.
+If this issue recurs frequently, add a startup hook to `global-settings.json` that auto-repairs the flags. This is not included by default because the issue is intermittent and the manual fix is fast. To add one, create a hook script and register it in the `Stop` or `PostToolUse` hook array in `global-settings.json`.
