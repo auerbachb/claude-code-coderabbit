@@ -103,9 +103,11 @@ GitHub does not auto-resolve PR review comments when the fix touches different l
    **How to reply — with 404 fallback:**
    - **First, try the inline reply endpoint:** `gh api repos/{owner}/{repo}/pulls/comments/{id}/replies -f body="..."`. This works for inline diff comments (comments attached to specific lines of code).
    - **If the reply endpoint returns 404:** The comment may be a review-level comment or a PR conversation comment rather than an inline diff comment — the `/replies` sub-resource only exists on diff-positioned comments. Fall back to posting a **PR-level comment** instead:
+
      ```bash
      gh pr comment N --body "@coderabbitai Fixed in \`abc1234\`: <what changed>. (Re: <brief description of the finding>)"
      ```
+
      Always include `@coderabbitai` so CR reads the reply. Include enough context (quote or paraphrase the finding) so CR can correlate the fix with the original comment.
    - **When to use which:**
      - Inline diff comments (`pulls/{N}/comments` endpoint, have `path` and `line` fields) → use `/replies` endpoint
