@@ -69,15 +69,15 @@ Claude Code loads `CLAUDE.md` from the project root first, then `~/.claude/CLAUD
 
 ### Project-level settings (`.claude/settings.json`)
 
-This repo includes a `.claude/settings.json` with broad permission allow rules. This ensures Claude Code can operate autonomously without prompting for every tool call — including in **git worktrees**, which have a [known bug](https://github.com/anthropics/claude-code/issues/28248) where bypass permissions set at the CLI don't reliably carry over.
+This repo includes a `.claude/settings.json` with broad permission allow rules. Ensures autonomous operation without prompting for every tool call, including in **git worktrees** which have a [known bug](https://github.com/anthropics/claude-code/issues/28248) where bypass permissions don't reliably carry over.
 
 The project-level settings apply to anyone working in this repo. They don't affect other repos.
 
 ### Global settings (`~/.claude/settings.json`)
 
-For the same autonomous behavior across **all** your repos (and all worktrees), copy the permissions block from `global-settings.json` into your `~/.claude/settings.json`. The `global-settings.json` file also contains hook configurations that must be copied to `~/.claude/settings.json` — hooks only work from the global settings file.
+For autonomous behavior across all repos and worktrees, copy the permissions block from `global-settings.json` to `~/.claude/settings.json`. The `global-settings.json` also contains hook configurations — hooks only work from the global settings file.
 
-**After copying `global-settings.json`, update the hook paths.** Replace `/path/to/claude-code-config/` with the actual path to your clone of this repo. If you rename or move the repo, the hooks will silently fail — this is a common gotcha (e.g., the rename from `claude-code-coderabbit` to `claude-code-config` broke all hook paths).
+**After copying, update the hook paths.** Replace `/path/to/claude-code-config/` with your actual clone path. If you rename or move the repo, hooks will silently fail.
 
 ### Hooks
 
