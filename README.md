@@ -116,6 +116,46 @@ The config is split into a root `CLAUDE.md` (~60 lines) and topic-specific rule 
 
 **Three-tier fallback chain.** CodeRabbit → Macroscope → self-review. CR is always preferred. If rate-limited on GitHub, Macroscope (`@macroscope-app review`) fills in. If both are unavailable, Claude does its own diff review. The flow never stalls.
 
+## Slash commands
+
+Custom skills (in `.claude/skills/`) that you can invoke during a session. Listed in typical workflow order.
+
+### `/status`
+
+- **Why:** You need a quick view of all open PRs without manually checking GitHub.
+- **When:** At the start of a session, after context compaction, or whenever you want to see what's in flight.
+- **How:** Queries GitHub for all open PRs, fetches review state from all three comment endpoints, checks CodeRabbit/Greptile status, and outputs a formatted dashboard table with reviewer, findings count, HEAD SHA, and blockers.
+
+### `/continue`
+
+- **Why:** Long-running review workflows get interrupted — context compaction, session timeouts, or manual pauses. Picking up where you left off manually is error-prone.
+- **When:** When resuming work on a feature branch that has an in-progress PR, or after any interruption to the review cycle.
+- **How:** Walks through the full review lifecycle (uncommitted changes, local CR review, push, PR creation, review polling, finding resolution, merge gate, acceptance criteria) and resumes at the first incomplete step. Outputs `[DONE]`/`[ACTION]`/`[BLOCKED]`/`[SKIP]` for each step.
+
+### `/check-acceptance-criteria`
+
+- **Why:** PRs should never be merged with unchecked Test Plan boxes. Manually verifying each criterion against code is tedious and easy to skip.
+- **When:** After reviews are clean and before merging, or anytime you want to verify the current state of acceptance criteria.
+- **How:** Parses every checkbox in the PR's Test Plan section, reads the relevant source files to verify each criterion, checks off passing items by editing the PR body, and reports any failures.
+
+### `/merge`
+
+- **Why:** Merging involves multiple verification steps (merge gate, acceptance criteria, work-log update) that are easy to skip or do out of order.
+- **When:** After reviews are clean and all acceptance criteria pass.
+- **How:** Verifies the merge gate (2 clean CR reviews or Greptile severity gate), runs acceptance criteria verification, squash merges with branch deletion, and logs the merge to the daily work log with cycle count and timestamps.
+
+### `/lessons`
+
+- **Why:** Insights from a session (workflow friction, edge cases, surprises) are lost when the conversation ends.
+- **When:** At the end of a session, before closing the thread.
+- **How:** Reviews the session for patterns and surprises, categorizes actionable lessons by memory type (feedback/project/user), checks for duplicates against existing memory, and saves novel lessons to the memory system.
+
+### `/standup`
+
+- **Why:** Writing standup summaries from raw PR titles misses the business context buried in PR bodies and issue descriptions.
+- **When:** Before a standup meeting, or whenever you need a summary of recent work.
+- **How:** Gathers merged PRs, closed issues, and open PRs since a given time (default: yesterday noon ET), reads each PR body for business context and concrete numbers, groups work into 2-5 business themes, and outputs a paste-ready standup report framed around system capabilities rather than file changes.
+
 ## Customizing
 
 The config is plain Markdown. Edit it to match your workflow:
