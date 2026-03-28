@@ -69,7 +69,7 @@ Claude Code loads `CLAUDE.md` from the project root first, then `~/.claude/CLAUD
 
 ### Project-level settings (`.claude/settings.json`)
 
-This repo includes a `.claude/settings.json` with broad permission allow rules. Ensures autonomous operation without prompting for every tool call, including in **git worktrees** which have a [known bug](https://github.com/anthropics/claude-code/issues/28248) where bypass permissions don't reliably carry over.
+This repo includes a `.claude/settings.json` with broad permission allow rules that ensure autonomous operation without prompting for every tool call, including in **git worktrees** which have a [known bug](https://github.com/anthropics/claude-code/issues/28248) where bypass permissions don't reliably carry over.
 
 The project-level settings apply to anyone working in this repo. They don't affect other repos.
 
