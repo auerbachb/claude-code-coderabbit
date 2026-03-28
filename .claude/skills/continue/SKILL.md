@@ -240,14 +240,29 @@ gh api --paginate "repos/{owner}/{repo}/issues/{N}/comments?per_page=100" \
   2. Verify against actual code before fixing
   3. Fix ALL valid findings in a single commit
   4. Push once
-  5. Reply to every thread confirming the fix:
+  5. Reply to every thread confirming the fix. Try the inline reply endpoint first:
+
      ```bash
      gh api "repos/{owner}/{repo}/pulls/comments/{id}/replies" -f body="Fixed in \`$SHA\`: <what changed>"
      ```
+
+     If the reply endpoint returns **404**, the comment is not an inline diff comment — fall back to a PR-level comment:
+
+     ```bash
+     gh pr comment N --body "@coderabbitai Fixed in \`$SHA\`: <what changed>. (Re: <brief description of the finding>)"
+     ```
+
+     **When to use which:**
+     - Inline diff comments (`path` and `line` fields present) → use `/replies` endpoint
+     - Review-level or PR conversation comments → use `gh pr comment` with `@coderabbitai` mention
+     - If unsure, try `/replies` first — the 404 is harmless and signals fallback
+
   6. Resolve each thread via GraphQL:
+
      ```bash
      gh api graphql -f query='mutation { resolveReviewThread(input: {threadId: "{thread_id}"}) { thread { isResolved } } }'
      ```
+
   7. After fixing, go back to **Step 6** to wait for the next review.
 - If no unresolved findings: `[DONE]` — No unresolved findings.
 
