@@ -25,22 +25,19 @@ This config encodes all of that into reusable instructions so you don't have to 
 
 ```bash
 mkdir -p ~/.claude
-# Back up existing config if you have one
-cp ~/.claude/CLAUDE.md ~/.claude/CLAUDE.md.bak 2>/dev/null
 
-# Copy or symlink
-cp CLAUDE.md ~/.claude/CLAUDE.md
-mkdir -p ~/.claude/rules
-cp -R .claude/rules/. ~/.claude/rules/
-
-# Copy global settings (hooks, env vars, marketplace config)
-cp global-settings.json ~/.claude/settings.json
-# Edit ~/.claude/settings.json and replace /path/to/claude-code-config/ with your actual clone path
-
-# Or symlink (auto-updates when you pull changes)
+# Symlink CLAUDE.md and rules (auto-updates when you pull changes)
 ln -sfn /path/to/claude-code-config/CLAUDE.md ~/.claude/CLAUDE.md
 ln -sfn /path/to/claude-code-config/.claude/rules ~/.claude/rules
-# Note: global-settings.json must be copied, not symlinked (needs per-user path edits)
+
+# Copy global settings (hooks, env vars, permissions, marketplace config)
+cp global-settings.json ~/.claude/settings.json
+```
+
+**After copying `global-settings.json`, you MUST replace all `/path/to/claude-code-config/` placeholders with the absolute path to your clone.** All hook paths must be absolute — do not use tilde (`~/`) or relative paths, they are unreliable. Example:
+
+```bash
+sed -i '' 's|/path/to/claude-code-config|/Users/yourname/Documents/Develop/claude-code-config|g' ~/.claude/settings.json
 ```
 
 ### Option 2: Per-project config
@@ -77,7 +74,7 @@ The project-level settings apply to anyone working in this repo. They don't affe
 
 For autonomous behavior across all repos and worktrees, copy the entire `global-settings.json` to `~/.claude/settings.json`. This includes both permissions and hook configurations. Hooks can be defined at any scope. Precedence: `.claude/settings.local.json` > `.claude/settings.json` > `~/.claude/settings.json`.
 
-**After copying, update the hook paths.** Replace `/path/to/claude-code-config/` with your actual clone path. If you rename or move the repo, hooks will silently fail.
+**All hook paths must be absolute.** Replace every `/path/to/claude-code-config/` with your actual clone location (e.g., `/Users/yourname/Documents/Develop/claude-code-config/`). Do not use tilde (`~/`) or relative paths. If you rename or move the repo, hooks will silently fail.
 
 ### Hooks
 
