@@ -124,7 +124,7 @@ Custom skills (in `.claude/skills/`) that you can invoke during a session. Liste
 
 - **Why:** You need a quick view of all open PRs without manually checking GitHub.
 - **When:** At the start of a session, after context compaction, or whenever you want to see what's in flight.
-- **How:** Queries GitHub for all open PRs, fetches review state from all three comment endpoints, checks CodeRabbit/Greptile status, and outputs a formatted dashboard table with reviewer, findings count, HEAD SHA, and blockers.
+- **How:** Queries GitHub for all open PRs, fetches review state from all three comment endpoints, checks CodeRabbit and fallback reviewer status, and outputs a formatted dashboard table with reviewer, findings count, HEAD SHA, and blockers.
 
 ### `/continue`
 
@@ -142,7 +142,7 @@ Custom skills (in `.claude/skills/`) that you can invoke during a session. Liste
 
 - **Why:** Merging involves multiple verification steps (merge gate, acceptance criteria, work-log update) that are easy to skip or do out of order.
 - **When:** After reviews are clean and all acceptance criteria pass.
-- **How:** Verifies the merge gate (2 clean CR reviews or Greptile severity gate), runs acceptance criteria verification, squash merges with branch deletion, and logs the merge to the daily work log with cycle count and timestamps.
+- **How:** Verifies the merge gate (2 clean CR reviews or fallback reviewer severity gate), runs acceptance criteria verification, squash merges with branch deletion, and logs the merge to the daily work log with cycle count and timestamps.
 
 ### `/lessons`
 
