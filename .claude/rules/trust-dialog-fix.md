@@ -22,9 +22,9 @@ Run this to fix flags for a specific project. Replace the `proj_key` value with 
 
 ```bash
 python3 -c "
-import json, sys
+import json, os, sys
 
-path = '$HOME/.claude.json'
+path = os.path.expanduser('~/.claude.json')
 with open(path) as f:
     data = json.load(f)
 
@@ -58,9 +58,9 @@ To fix **all** projects at once:
 
 ```bash
 python3 -c "
-import json
+import json, os
 
-path = '$HOME/.claude.json'
+path = os.path.expanduser('~/.claude.json')
 with open(path) as f:
     data = json.load(f)
 
