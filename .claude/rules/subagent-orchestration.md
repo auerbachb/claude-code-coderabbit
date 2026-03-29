@@ -50,6 +50,7 @@ Subagents have a 32K output token limit. Parent agents may hit turn limits. When
 **When approaching exhaustion, do this (in order):**
 
 1. **Write a handoff to `~/.claude/session-state.json`.** Update the PR's entry with:
+
    ```json
    {
      "phase": "B",
@@ -60,6 +61,7 @@ Subagents have a 32K output token limit. Parent agents may hit turn limits. When
      "head_sha": "abc1234"
    }
    ```
+
 2. **Report concisely to the parent (subagent) or user (parent).** State what was done and what remains — do NOT ask "should I continue?" or "want me to spawn a new agent?" The parent will read session-state and act.
 3. **Exit cleanly.** Do not attempt to squeeze in one more tool call that might fail mid-execution.
 
