@@ -34,7 +34,8 @@ Every transition below is classified as **"Always do"** (autonomous) or **"Ask f
 | Phase B reports clean | Parent launches Phase C | **Always do** |
 | Merge gate met | Verify AC checkboxes against code | **Always do** |
 | AC verified, all boxes checked | Ask user about merging | **Ask first** |
-| Subagent failed | Report failure, ask about respawn | **Ask first** |
+| Subagent failed (crash / no handoff state) | Report failure, ask about respawn | **Ask first** |
+| Subagent exited with valid exhaustion handoff | Launch replacement for same phase | **Always do** |
 
 > **Anti-pattern:** If you find yourself composing "Should I...?" or "Want me to...?" for any "Always do" row, stop — the answer is always yes. Execute immediately.
 
@@ -49,6 +50,7 @@ Subagents have a 32K output token limit. Parent agents may hit turn limits. When
 **When approaching exhaustion, do this (in order):**
 
 1. **Write a handoff to `~/.claude/session-state.json`.** Update the PR's entry with:
+
    ```json
    {
      "phase": "B",
@@ -59,6 +61,7 @@ Subagents have a 32K output token limit. Parent agents may hit turn limits. When
      "head_sha": "abc1234"
    }
    ```
+
 2. **Report concisely to the parent (subagent) or user (parent).** State what was done and what remains — do NOT ask "should I continue?" or "want me to spawn a new agent?" The parent will read session-state and act.
 3. **Exit cleanly.** Do not attempt to squeeze in one more tool call that might fail mid-execution.
 
@@ -224,7 +227,8 @@ When one or more subagents are active, the parent agent enters **monitor mode**.
 - Creating GitHub issues or PRs
 - Reading/analyzing source files for non-monitoring purposes
 - Running local CR reviews
-- Any multi-step operation that takes >60 seconds and could displace a poll cycle
+- Any non-monitoring multi-step operation that could displace the polling loop
+  (monitoring tasks like state reconstruction, output verification, and checkpoint writes are exempt)
 - Fixing code yourself instead of delegating to a subagent
 
 > **The core principle:** If it can be delegated to a subagent, it MUST be delegated. The parent's job is to orchestrate, not to execute.
