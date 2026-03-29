@@ -53,10 +53,10 @@ If an engineer username was provided, understand their current workload and rece
 
 ```bash
 # Recent merged PRs — shows what they've been working on
-gh pr list --author $USERNAME --state merged --limit 20 --json number,title,mergedAt,additions,deletions
+gh pr list --author $USERNAME --state merged --limit 20 --json number,title,mergedAt,additions,deletions,files
 
 # Currently open PRs — shows what they're actively doing RIGHT NOW
-gh pr list --author $USERNAME --state open --json number,title,createdAt,additions,deletions
+gh pr list --author $USERNAME --state open --json number,title,createdAt,additions,deletions,files
 
 # Issues currently assigned to them
 gh issue list --state open --assignee $USERNAME --json number,title,labels,createdAt
@@ -76,7 +76,7 @@ For every open issue, assess:
 1. **Goal alignment (primary signal):** How directly does completing this issue advance the stated business goal? Score on a 4-point scale:
    - **Critical:** Directly unblocks or achieves the goal. Without this, the goal cannot be met.
    - **High:** Significant enabler — completing this materially accelerates progress toward the goal.
-   - **Medium:** Supporting work — useful but not on the critical path. Could be deferred without derailing the goal.
+   - **Medium:** Supporting work — useful but not on the critical path; it can be deferred without derailing the goal.
    - **Low:** Tangential — nice to have, or addresses a different goal entirely.
 
 2. **Leverage (secondary signal):** Does this issue unblock other high-value issues? An issue that unblocks 3 Critical issues is itself Critical, even if its direct goal alignment is Medium.
@@ -182,7 +182,7 @@ Limit to 3-5 actions. Each action should be specific enough to act on immediatel
 - **1-2 lines per issue maximum** in the tiered list. Save detail for the next actions section.
 - **Flag dependencies inline** with the issue they affect (e.g., `Blocked by: #35`). Do not create a separate dependency section — keep it scannable.
 - **"Stop doing" is sensitive.** Only include it when the misalignment is clear and the alternative is materially better. Do not flag Medium work as "stop doing" unless Critical work is available.
-- **Do not list every issue.** If 80 of 100 issues are Low/tangential, say "68 additional issues are Low priority relative to this goal" rather than listing them all.
+- **Do not list every issue.** If 80 of 100 issues are Low/tangential, say "68 additional issues are Low-priority relative to this goal" rather than listing them all.
 - **Total output should be scannable in under 2 minutes.** An engineering manager should be able to read this and know what to assign.
 - **Do not mention the scoring process.** The output should read as a confident recommendation, not a methodology explanation.
 - **If no engineer was specified**, skip the "Stop doing" section and the role filtering. Rank all issues for any engineer.
