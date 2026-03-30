@@ -78,8 +78,11 @@ cp global-settings.json ~/.claude/settings.json
 **Then replace all placeholder paths** with the absolute path to your clone:
 
 ```bash
-# Replace with YOUR actual path
+# macOS:
 sed -i '' 's|/path/to/claude-code-config|'"$(pwd)"'|g' ~/.claude/settings.json
+
+# Linux:
+sed -i 's|/path/to/claude-code-config|'"$(pwd)"'|g' ~/.claude/settings.json
 ```
 
 This file configures:
