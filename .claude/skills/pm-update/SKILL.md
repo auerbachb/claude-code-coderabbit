@@ -89,7 +89,9 @@ Before writing, show the user what will change:
    - Updated: CI workflows (added deploy.yml)
    ```
 4. If no changes detected in either section: skip to Step 7 with message "Infrastructure and Architecture are unchanged — config is up to date." Do not write the file.
-5. If changes exist, proceed to Step 6 to apply them.
+5. If changes exist, ask the user: "Apply these updates to `.claude/pm-config.md`?" Wait for confirmation before proceeding.
+6. If the user declines, stop without writing. Report: "Update cancelled — no changes written."
+7. If the user confirms, proceed to Step 6 to apply them.
 
 ## Step 6: Reassemble and write config
 
