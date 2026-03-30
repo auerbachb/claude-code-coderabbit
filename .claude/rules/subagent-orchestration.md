@@ -122,7 +122,7 @@ Subagents have a hardcoded **32K output token limit** that cannot be configured 
   - If only P1/P2 (no P0): merge-ready after fix push — no re-review needed.
 - If clean pass on CR: trigger one more `@coderabbitai full review` for confirmation (2 clean CR passes needed)
 - If clean Greptile pass (no findings at all): merge-ready immediately.
-- **Phase B Completion:** Update the handoff file at `~/.claude/handoffs/pr-{N}-handoff.json` — set `phase_completed` to `"B"`, refresh `head_sha` if there was a new push, append any new entries to `findings_fixed`, `threads_replied`, `threads_resolved`, and `files_changed`.
+- **Phase B Completion:** Update the handoff file at `~/.claude/handoffs/pr-{N}-handoff.json` — set `phase_completed` to `"B"`, refresh `head_sha` if there was a new push, and merge new entries into `findings_fixed`, `threads_replied`, `threads_resolved`, and `files_changed`. **Deduplicate by ID:** before appending, check if the ID already exists in the array — only add entries not already present. This prevents duplicate accumulation when replacement agents re-process the same findings.
 - **EXIT after confirming clean or after fixing one round**
 
 **Phase C: Merge Prep** (lightest)
