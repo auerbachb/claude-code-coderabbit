@@ -50,26 +50,7 @@ ln -sfn "$(pwd)/.claude/rules" ~/.claude/rules
 
 Rule files in `.claude/rules/` auto-load alongside `CLAUDE.md`. They contain the detailed review, planning, safety, and orchestration workflows.
 
-### Step 5: Symlink each skill
-
-Skills are slash commands (e.g., `/status`, `/merge`, `/standup`). Each one needs its own symlink:
-
-```bash
-for skill in .claude/skills/*/; do
-  name=$(basename "$skill")
-  ln -sfn "$(pwd)/$skill" ~/.claude/skills/"$name"
-done
-```
-
-Verify they're symlinks (not copies):
-
-```bash
-ls -la ~/.claude/skills/
-```
-
-Every entry should show `->` pointing back to this repo.
-
-### Step 6: Install global settings (hooks + permissions)
+### Step 5: Install global settings (hooks + permissions)
 
 ```bash
 cp global-settings.json ~/.claude/settings.json
@@ -95,7 +76,7 @@ This file configures:
 
 > **Important:** All hook paths in `settings.json` must be absolute. Do not use `~/` or relative paths — they are unreliable. If you move the repo, re-run the `sed` command above.
 
-### Step 7: Set up skills worktree
+### Step 6: Set up skills worktree
 
 The skills worktree ensures skills are always available regardless of what branch the root repo is on:
 
@@ -106,7 +87,7 @@ The skills worktree ensures skills are always available regardless of what branc
 
 This creates a dedicated worktree at `~/.claude/skills-worktree/` pinned to `main` and symlinks all skills to `~/.claude/skills/`. The `post-merge-pull.sh` hook keeps it in sync automatically. If skills ever break, re-run this script.
 
-### Step 8: Install prerequisites
+### Step 7: Install prerequisites
 
 These tools are required for the full workflow:
 
@@ -128,7 +109,7 @@ The CLI installs to `~/.local/bin/coderabbit`. If it's not in your PATH, the con
 
 **Optional: Greptile** — An AI code reviewer used as a fallback when CodeRabbit is rate-limited or unresponsive. Install the [Greptile GitHub App](https://greptile.com) on your repos. Greptile app settings are configured via the Greptile web dashboard (app.greptile.com). The `greptile.md` rule file in this repo tells Claude how to use Greptile as a fallback reviewer.
 
-### Step 9: Set up CodeRabbit for a repo (per-repo)
+### Step 8: Set up CodeRabbit for a repo (per-repo)
 
 For each repo where you want the full workflow:
 
@@ -136,7 +117,7 @@ For each repo where you want the full workflow:
 2. Optionally add a `.coderabbit.yaml` to the repo root for custom review rules.
 3. The config auto-detects whether CodeRabbit is installed. If it's not, those sections are skipped.
 
-### Step 10: Verify your setup
+### Step 9: Verify your setup
 
 ```bash
 # Check symlinks point to this repo
@@ -326,7 +307,7 @@ Yes. The rate limits in the config are tuned for Pro (8 reviews/hour, 50 chats/h
 The local review loop times out after 2 minutes. The GitHub loop times out after 7 minutes and falls back to Greptile (budget permitting). If both are unavailable, Claude runs a self-review and reports a merge-gate blocker.
 
 **Can I use this without CodeRabbit?**
-Yes. The config auto-detects CodeRabbit. Without it, Claude falls back to Greptile or self-review, and you still get the PR workflow, branch naming, acceptance criteria verification, and squash-merge flow.
+Yes. The config auto-detects CodeRabbit. Without it, Claude uses self-review as a fallback, and you still get the PR workflow, branch naming, acceptance criteria verification, and squash-merge flow. (Greptile is only triggered as a fallback when CodeRabbit is installed but rate-limited or unresponsive.)
 
 **Can I use this without Greptile?**
 Yes. Greptile is optional — it's only triggered when CodeRabbit is rate-limited or unresponsive. Without it, the fallback chain is CodeRabbit → self-review.
