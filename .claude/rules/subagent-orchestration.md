@@ -317,6 +317,15 @@ BEFORE triggering `@coderabbitai full review` or entering the polling loop:
 4. Only request a new review after all prior findings are addressed
 Skipping this step wastes a review cycle and burns CR quota.
 
+### Step 0b: Check ALL CI check-runs (MANDATORY — every poll cycle)
+Fetch ALL check-runs once per cycle (reuse this result in Step 1b for CR rate-limit detection):
+`gh api "repos/{owner}/{repo}/commits/{SHA}/check-runs?per_page=100" --jq '.check_runs[] | {id, name, status, conclusion, title: .output.title}'`
+If ANY check-run has a blocking conclusion (`failure`, `timed_out`, `action_required`, `startup_failure`, `stale`):
+1. Read the failure output: `gh api "repos/{owner}/{repo}/check-runs/{ID}" --jq '.output.summary'`
+2. If test/lint/build failure -> fix code, commit, push BEFORE continuing review loop
+3. If transient/infra failure -> note it, retry with no-op commit if needed
+A PR with passing CR but failing CI is NOT merge-ready. Report CI status to user.
+
 ### Step 1: Check if PR is already on Greptile
 If this PR has already switched to Greptile (check session-state `reviewer` field), skip CR polling entirely — go directly to Step 3 and trigger `@greptileai`.
 
@@ -326,10 +335,9 @@ If this PR has already switched to Greptile (check session-state `reviewer` fiel
   - `repos/{owner}/{repo}/pulls/{N}/comments?per_page=100`
   - `repos/{owner}/{repo}/issues/{N}/comments?per_page=100`
 - Filter by `coderabbitai[bot]` (with [bot] suffix)
-- EVERY cycle, check commit status for rate limit (FAST PATH):
-  `gh api "repos/{owner}/{repo}/commits/{SHA}/check-runs" --jq '.check_runs[] | select(.name == "CodeRabbit")'`
-  If check shows "rate limit" in output.title with conclusion "failure" -> Greptile IMMEDIATELY.
-  If check-runs empty, also check: `gh api "repos/{owner}/{repo}/commits/{SHA}/statuses"`
+- Reuse the Step 0b check-runs result for CR rate-limit fast-path detection:
+  Find the CodeRabbit entry in the already-fetched check-runs. If it shows "rate limit" in output.title with conclusion "failure" -> Greptile IMMEDIATELY.
+  If no CodeRabbit check-run in the result, also check: `gh api "repos/{owner}/{repo}/commits/{SHA}/statuses"`
 
 ### Step 2: After 7 minutes with no review -> trigger Greptile (NO EXCEPTIONS)
 If 7 minutes pass and CR has not delivered review content, trigger Greptile.
