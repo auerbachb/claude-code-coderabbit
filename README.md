@@ -339,16 +339,16 @@ Related issues: [anthropics/claude-code#17017](https://github.com/anthropics/cla
 **Fix:** Delete any `.claude/settings.json` from your repos and rely exclusively on the global settings file (`~/.claude/settings.json`). Use `global-settings.json` from this repo as your template.
 
 ```bash
-# Find project-level settings files
-find /path/to/your/repo -name "settings.json" -path "*/.claude/*" -not -path "*/.git/*"
+# Find project-level settings files (use . from a repo root, or an absolute path)
+find . -name "settings.json" -path "*/.claude/*" -not -path "*/.git/*"
 
 # Inspect each file — if it only contains permissions, it's safe to delete.
 # If it has hooks or env vars you want to keep, migrate those to ~/.claude/settings.json first.
-find /path/to/your/repo -name "settings.json" -path "*/.claude/*" -not -path "*/.git/*" \
+find . -name "settings.json" -path "*/.claude/*" -not -path "*/.git/*" \
   -exec sh -c 'echo "== $1 =="; cat "$1"' _ {} \;
 
 # After confirming the files only contain permissions:
-find /path/to/your/repo -name "settings.json" -path "*/.claude/*" -not -path "*/.git/*" -delete
+find . -name "settings.json" -path "*/.claude/*" -not -path "*/.git/*" -delete
 ```
 
 **Cause 2: Trust dialog flags reset on new worktrees.**
