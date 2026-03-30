@@ -281,7 +281,10 @@ A `.claude/settings.json` inside the repo (or inside a worktree) takes precedenc
 find /path/to/your/repo -name "settings.json" -path "*/.claude/*" -not -path "*/.git/*"
 
 # Update each one to use the wildcard
-echo '{"permissions":{"allow":["*"]}}' | python3 -m json.tool > /path/to/repo/.claude/settings.json
+find /path/to/your/repo -name "settings.json" -path "*/.claude/*" -not -path "*/.git/*" -print0 \
+  | while IFS= read -r -d '' f; do
+      echo '{"permissions":{"allow":["*"]}}' | python3 -m json.tool > "$f"
+    done
 ```
 
 **Cause 2: Trust dialog flags reset on new worktrees.**
@@ -292,9 +295,12 @@ Every worktree creates a new project entry in `~/.claude.json` with `hasTrustDia
 
 ```bash
 python3 -c "
-import json, os
+import json, os, sys
 
 path = os.path.expanduser('~/.claude.json')
+if not os.path.exists(path):
+    print('~/.claude.json not found. Open Claude Code once, then rerun this fix.')
+    sys.exit(1)
 with open(path) as f:
     data = json.load(f)
 
