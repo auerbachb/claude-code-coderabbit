@@ -75,6 +75,8 @@ Every entry should show `->` pointing back to this repo.
 cp global-settings.json ~/.claude/settings.json
 ```
 
+> **Why copy instead of symlink?** Unlike the other files, `settings.json` contains absolute paths that must be customized per machine. A symlink would point everyone to the same placeholder paths.
+
 **Then replace all placeholder paths** with the absolute path to your clone:
 
 ```bash
