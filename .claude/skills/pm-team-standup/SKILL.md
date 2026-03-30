@@ -42,7 +42,7 @@ Build a lookup map of GitHub username → display name and role. If no Team sect
 ### 3a: Commits by author
 
 ```bash
-git log --since="24 hours ago" --format='%aN|||%aE|||%s' --no-merges
+git log --since="$SINCE_ISO" --format='%aN|||%aE|||%s' --no-merges
 ```
 
 Group commits by author name. For each author, collect commit messages.
