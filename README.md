@@ -40,6 +40,15 @@ cp global-settings.json ~/.claude/settings.json
 sed -i '' 's|/path/to/claude-code-config|/Users/yourname/Documents/Develop/claude-code-config|g' ~/.claude/settings.json
 ```
 
+**Set up skills worktree** (makes skills available regardless of what branch the root repo is on):
+
+```bash
+# Run from inside the repo
+./setup-skills-worktree.sh
+```
+
+This creates a dedicated worktree at `~/.claude/skills-worktree/` pinned to `main` and symlinks all skills to `~/.claude/skills/`. The `post-merge-pull.sh` hook keeps it in sync automatically. If skills ever break, re-run this script.
+
 ### Option 2: Per-project config
 
 ```bash
