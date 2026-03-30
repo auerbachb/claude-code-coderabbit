@@ -288,11 +288,10 @@ push                No: self-review         Yes
        v                  v                  v
 Reply to every      Report blocker:     Merge gate met
 comment thread      self-review only
-comment thread           |
-       |                  v
-       v            Severity gate:
-Poll again...       P0 → re-review
-repeat until        P1/P2 → merge-ready
+       |
+       v
+Poll again...
+repeat until
 clean
 ```
 
