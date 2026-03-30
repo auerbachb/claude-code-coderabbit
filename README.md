@@ -264,6 +264,60 @@ This usually happens on clean passes (no findings). When CR has findings, it pos
 **What if CodeRabbit and Claude disagree?**
 During planning, the config tells Claude to pick the best ideas from both plans. During review, Claude verifies every CR finding against the actual code before applying it — it won't blindly apply suggestions that would break things.
 
+## Troubleshooting
+
+### Claude Code keeps asking for permission even with bypass enabled
+
+This is the most common issue. You've set `"allow": ["*"]` in `~/.claude/settings.json`, but Claude Code still prompts you to approve edits, bash commands, or the trust dialog. There are two independent causes — fix both.
+
+**Cause 1: Project-level settings override your global wildcard.**
+
+A `.claude/settings.json` inside the repo (or inside a worktree) takes precedence over `~/.claude/settings.json`. If the project-level file uses specific patterns like `Edit(*)` instead of `*`, certain operations (especially cross-worktree edits) won't match and will trigger prompts.
+
+**Fix:** Ensure every `.claude/settings.json` in the repo and its worktrees uses the same wildcard:
+
+```bash
+# Find all project-level settings files
+find /path/to/your/repo -name "settings.json" -path "*/.claude/*" -not -path "*/.git/*"
+
+# Update each one to use the wildcard
+echo '{"permissions":{"allow":["*"]}}' | python3 -m json.tool > /path/to/repo/.claude/settings.json
+```
+
+**Cause 2: Trust dialog flags reset on new worktrees.**
+
+Every worktree creates a new project entry in `~/.claude.json` with `hasTrustDialogAccepted`, `hasClaudeMdExternalIncludesApproved`, and `hasClaudeMdExternalIncludesWarningShown` all set to `false`. This triggers the trust dialog and external includes approval prompts again.
+
+**Fix:** Run this to set all flags to `true` across all projects:
+
+```bash
+python3 -c "
+import json, os
+
+path = os.path.expanduser('~/.claude.json')
+with open(path) as f:
+    data = json.load(f)
+
+flags = ['hasTrustDialogAccepted', 'hasClaudeMdExternalIncludesApproved', 'hasClaudeMdExternalIncludesWarningShown']
+total = 0
+for proj in data.get('projects', {}).values():
+    if not isinstance(proj, dict): continue
+    for flag in flags:
+        if not proj.get(flag):
+            proj[flag] = True
+            total += 1
+
+if total:
+    with open(path, 'w') as f:
+        json.dump(data, f, indent=2)
+    print(f'Fixed {total} flag(s).')
+else:
+    print('All flags already set.')
+"
+```
+
+You'll need to re-run this after creating new worktrees. See `.claude/rules/trust-dialog-fix.md` for more details and a single-project variant.
+
 ## Contributing
 
 Found an edge case or improvement? PRs welcome. This config evolved from real-world usage across multiple repos, but there's always room to handle more scenarios.
