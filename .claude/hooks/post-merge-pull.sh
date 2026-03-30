@@ -82,7 +82,7 @@ if [[ "$command" == *"gh pr merge"* ]] && [[ "$exit_code" == "0" ]]; then
           printf 'post-merge-pull: skills worktree reset failed\n' >&2
         fi
 
-        # Re-symlink any new skills that appeared on main
+        # Re-symlink any new or stale skills
         skills_src="$skills_wt/.claude/skills"
         skills_dir="$HOME/.claude/skills"
         if [[ -d "$skills_src" && -d "$skills_dir" ]]; then
@@ -91,9 +91,15 @@ if [[ "$command" == *"gh pr merge"* ]] && [[ "$exit_code" == "0" ]]; then
             name="$(basename "$skill_dir")"
             link="$skills_dir/$name"
             target="$skills_src/$name"
-            if [[ ! -e "$link" ]]; then
-              ln -s "$target" "$link" 2>/dev/null || true
+            if [[ -L "$link" ]]; then
+              # Replace stale symlinks pointing elsewhere
+              [[ "$(readlink "$link")" == "$target" ]] && continue
+              rm "$link" 2>/dev/null || true
+            elif [[ -e "$link" ]]; then
+              # Skip non-symlink entries (directories/copies) — setup script handles these
+              continue
             fi
+            ln -s "$target" "$link" 2>/dev/null || true
           done
         fi
       fi

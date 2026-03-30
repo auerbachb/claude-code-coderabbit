@@ -17,7 +17,7 @@ SKILLS_WORKTREE="$HOME/.claude/skills-worktree"
 SKILLS_DIR="$HOME/.claude/skills"
 
 # Find the repo root (works from anywhere inside the repo or a worktree)
-REPO_ROOT="$(git worktree list | head -1 | awk '{print $1}')"
+REPO_ROOT="$(git worktree list 2>/dev/null | head -1 | awk '{print $1}')" || true
 
 if [[ -z "$REPO_ROOT" || ! -d "$REPO_ROOT/.git" ]]; then
   echo "ERROR: Could not find the root repo. Run this from inside the claude-code-config repo." >&2
@@ -34,7 +34,6 @@ if [[ -d "$SKILLS_WORKTREE" ]]; then
   if [[ "$wt_root" == "$REPO_ROOT" ]]; then
     echo "Skills worktree already exists at $SKILLS_WORKTREE — updating to latest main."
     git -C "$SKILLS_WORKTREE" fetch origin main --quiet
-    git -C "$SKILLS_WORKTREE" checkout main --quiet 2>/dev/null || true
     git -C "$SKILLS_WORKTREE" reset --hard origin/main --quiet
   else
     echo "ERROR: $SKILLS_WORKTREE exists but belongs to a different repo ($wt_root)." >&2

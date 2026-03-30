@@ -16,22 +16,13 @@ The `post-merge-pull.sh` hook automatically syncs the skills worktree after merg
 
 ## Session Start: Verify Skills Worktree
 
-At the start of every session, verify the skills worktree exists:
+At the start of every session, verify the skills worktree exists. If missing, run the setup script:
 
 ```bash
 if [[ ! -d "$HOME/.claude/skills-worktree/.claude/skills" ]]; then
-  # Run the setup script from any location inside the repo
   REPO_ROOT="$(git worktree list | head -1 | awk '{print $1}')"
   bash "$REPO_ROOT/setup-skills-worktree.sh"
 fi
-```
-
-If the setup script doesn't exist in the repo yet (e.g., on a branch that predates it), the worktree must be created manually:
-
-```bash
-REPO_ROOT="$(git worktree list | head -1 | awk '{print $1}')"
-git -C "$REPO_ROOT" fetch origin main --quiet
-git -C "$REPO_ROOT" worktree add "$HOME/.claude/skills-worktree" origin/main --detach --quiet
 ```
 
 ## After Creating a New Skill
@@ -50,13 +41,6 @@ git -C "$HOME/.claude/skills-worktree" reset --hard origin/main --quiet
 
 # Create the symlink
 ln -s "$HOME/.claude/skills-worktree/.claude/skills/<name>" "$HOME/.claude/skills/<name>"
-```
-
-If the skill hasn't been merged to `main` yet (e.g., still on a feature branch), you can temporarily symlink from the current worktree — but note this is fragile and should be replaced once the skill lands on `main`:
-
-```bash
-# Temporary — will break when this worktree is removed
-ln -s "$(pwd)/.claude/skills/<name>" "$HOME/.claude/skills/<name>"
 ```
 
 If `~/.claude/skills/` does not exist, create it first: `mkdir -p ~/.claude/skills/`.
