@@ -54,7 +54,7 @@ After pushing a commit to a PR, **automatically** enter the CR review loop. Do n
 
 ```bash
 gh api "repos/{owner}/{repo}/commits/{SHA}/check-runs?per_page=100" \
-  --jq '.check_runs[] | {name, status, conclusion}'
+  --jq '.check_runs[] | {id, name, status, conclusion, title: .output.title}'
 ```
 
 **Rules:**
