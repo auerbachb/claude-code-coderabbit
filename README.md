@@ -8,7 +8,7 @@ After setup, Claude Code will automatically:
 
 - **Plan before coding** — Kicks off `@coderabbitai plan` on new issues, builds its own plan in parallel, then merges both into one implementation spec.
 - **Review locally first** — Runs CodeRabbit reviews via CLI before pushing. No PR noise, instant feedback.
-- **GitHub review as safety net** — After pushing, CodeRabbit auto-reviews on GitHub. Claude polls for findings and resolves them. If CodeRabbit is rate-limited, Greptile is triggered as a fallback.
+- **GitHub review as safety net** — After pushing, CodeRabbit auto-reviews on GitHub. Claude polls for findings and resolves them. If CodeRabbit is rate-limited or unresponsive, Greptile is triggered as a fallback (budget permitting).
 - **Handle rate limits** — Batches fixes into single commits, respects CodeRabbit's hourly limits, falls back to Greptile or self-review when throttled.
 - **Verify acceptance criteria** — Before merging, reads every Test Plan checkbox, verifies each against the code, and checks them off.
 - **Squash and merge** — Clean PRs get squash-merged with branch cleanup after merge gates pass.
@@ -115,7 +115,7 @@ coderabbit auth login
 
 The CLI installs to `~/.local/bin/coderabbit`. If it's not in your PATH, the config falls back to the full path.
 
-**Optional: Greptile** — An AI code reviewer used as a fallback when CodeRabbit is rate-limited. Install the [Greptile GitHub App](https://greptile.com) on your repos. Greptile app settings are configured via the Greptile web dashboard (app.greptile.com). The `greptile.md` rule file in this repo tells Claude how to use Greptile as a fallback reviewer.
+**Optional: Greptile** — An AI code reviewer used as a fallback when CodeRabbit is rate-limited or unresponsive. Install the [Greptile GitHub App](https://greptile.com) on your repos. Greptile app settings are configured via the Greptile web dashboard (app.greptile.com). The `greptile.md` rule file in this repo tells Claude how to use Greptile as a fallback reviewer.
 
 ### Step 8: Set up CodeRabbit for a repo (per-repo)
 
@@ -228,7 +228,7 @@ Slash commands you can invoke during a session:
 
 **Batch fixes, single push.** Every push consumes a CodeRabbit review from your hourly quota. The config instructs Claude to fix all findings in one commit rather than pushing per-finding.
 
-**Three-tier fallback chain.** CodeRabbit → Greptile → self-review. CR is always preferred. If rate-limited, Greptile fills in. If both are unavailable, Claude does its own diff review. The flow never stalls.
+**Three-tier fallback chain.** CodeRabbit → Greptile → self-review. CR is always preferred. If rate-limited or unresponsive, Greptile is used if budget allows. If both are unavailable (or Greptile budget is exhausted), Claude performs self-review for risk reduction and reports a blocker. Self-review does **not** satisfy the merge gate.
 
 **Verify before merge.** Claude won't offer to merge until it has read the source files and confirmed every acceptance criteria checkbox.
 
@@ -284,9 +284,10 @@ against code           daily budget     completion signal
 Fix all findings    Budget OK?          2 clean CR passes?
 in one commit,      Yes: @greptileai         |
 push                No: self-review         Yes
-       |                  v                  |
-       v            Process findings         v
-Reply to every      same as CR          Merge gate met
+       |                  |                  |
+       v                  v                  v
+Reply to every      Report blocker:     Merge gate met
+comment thread      self-review only
 comment thread           |
        |                  v
        v            Severity gate:
@@ -312,7 +313,7 @@ No. Local CLI reviews are separate from GitHub PR reviews. The 8-reviews/hour li
 Yes. The rate limits in the config are tuned for Pro (8 reviews/hour, 50 chats/hour). Free tier limits are lower — you may want to increase polling timeouts.
 
 **What happens when CodeRabbit is slow or down?**
-The local review loop times out after 2 minutes. The GitHub loop times out after 7 minutes and falls back to Greptile. If both are unavailable, Claude runs a self-review. The flow never stalls.
+The local review loop times out after 2 minutes. The GitHub loop times out after 7 minutes and falls back to Greptile (budget permitting). If both are unavailable, Claude runs a self-review and reports a merge-gate blocker.
 
 **Can I use this without CodeRabbit?**
 Yes. The config auto-detects CodeRabbit. Without it, Claude falls back to Greptile or self-review, and you still get the PR workflow, branch naming, acceptance criteria verification, and squash-merge flow.
