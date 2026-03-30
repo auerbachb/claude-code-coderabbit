@@ -34,19 +34,25 @@ For each merged PR, record: author, additions, deletions, commit count.
 
 ### 3b: Review cycles per PR
 
-For each merged PR from 3a, count review cycles — the number of review rounds that triggered fix commits:
+For each merged PR from 3a, count review cycles — the number of review rounds that triggered fix commits.
 
-```bash
-# For each PR number:
-gh api "repos/{owner}/{repo}/pulls/$PR_NUM/reviews?per_page=100" \
-  --jq '[.[] | select(.user.login | endswith("[bot]") or . == "github-actions") | .user.login] as $bots |
-        [.[] | select(.user.login as $u | $bots | index($u) | not)] |
-        length'
-```
+**How to compute cycles for a PR:**
 
-Also fetch the commit timeline to correlate reviews with subsequent fix pushes. A "cycle" = a review with actionable findings followed by at least one new commit before the next review or merge. Clean passes (no findings) do not count as cycles.
+1. Fetch reviews sorted by submission time (exclude bot logins ending in `[bot]` and `github-actions`):
+   ```bash
+   gh api "repos/{owner}/{repo}/pulls/$PR_NUM/reviews?per_page=100" \
+     --jq '[.[] | select(.user.login | (endswith("[bot]") or . == "github-actions") | not)] | sort_by(.submitted_at)'
+   ```
 
-If review data is unavailable (no reviews on any PR), note this gracefully: "No PR review history found — review cycle metrics skipped."
+2. Fetch the PR commit timeline:
+   ```bash
+   gh api "repos/{owner}/{repo}/pulls/$PR_NUM/commits?per_page=100" \
+     --jq '[.[] | {sha: .sha, date: .commit.committer.date}] | sort_by(.date)'
+   ```
+
+3. Iterate reviews chronologically. A review counts as one cycle if there exists at least one commit with `timestamp > review.submitted_at` AND `timestamp < next_review.submitted_at` (or `< merge time` if there is no subsequent review). Reviews with no subsequent commits are non-actionable and do not count.
+
+If no reviews exist on any PR in the period, note this gracefully: "No PR review history found — review cycle metrics skipped."
 
 ### 3c: Issue throughput
 
@@ -73,13 +79,15 @@ Count reviews per reviewer. Exclude self-reviews (reviewer == PR author).
 
 ### 3e: First-pass CR success rate
 
-For each merged PR, check if CodeRabbit's first review had zero findings:
+For each merged PR, check if CodeRabbit's first review passed clean:
 
-1. Fetch the first review from `coderabbitai[bot]` on that PR
-2. If the first review had no inline comments and no actionable findings → first-pass success
+1. Fetch the first review from `coderabbitai[bot]` on that PR (sort by `submitted_at`, take the earliest)
+2. A PR counts as **first-pass success** when the first `coderabbitai[bot]` review meets BOTH criteria:
+   - No inline comments from `coderabbitai[bot]` on `pulls/$PR_NUM/comments`
+   - No review with GitHub state `CHANGES_REQUESTED` from `coderabbitai[bot]`
 3. Calculate: (PRs passing CR on first push) / (total PRs with CR reviews) × 100%
 
-If CR is not used in the repo (no `coderabbitai[bot]` reviews found), skip this metric gracefully.
+If no `coderabbitai[bot]` reviews are found on any PR in the period, skip this metric entirely with a note: "CodeRabbit not detected — CR first-pass rate skipped."
 
 ## Step 4: Filter out bots
 
