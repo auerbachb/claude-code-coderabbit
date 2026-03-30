@@ -461,13 +461,18 @@ The merge gate depends on which reviewer owns the PR:
 
 If BOTH reviewers are down (CR rate-limited + Greptile timeout), perform self-review for risk reduction and report the blocker. Self-review does NOT satisfy the merge gate.
 
-### Final Step: Write/Update Handoff File
-After completing your phase's work (fixes pushed, threads replied, etc.):
-1. Create directory if needed: `mkdir -p ~/.claude/handoffs/`
-2. Write `~/.claude/handoffs/pr-{N}-handoff.json` with:
-   - `schema_version`: "1.0"
-   - `pr_number`, `head_sha`, `reviewer`, `phase_completed` (your phase letter)
-   - `findings_fixed`, `threads_replied`, `threads_resolved`, `files_changed`
-   - `push_timestamp`, `created_at` (ISO 8601), `notes`
-3. Phase C only: after successful merge, delete the handoff file.
+### Final Step: Handoff File Lifecycle (per-phase)
+- **Phase A (create):** `mkdir -p ~/.claude/handoffs/` then write a new
+  `~/.claude/handoffs/pr-{N}-handoff.json` with all schema fields:
+  `schema_version`, `pr_number`, `head_sha`, `reviewer`, `phase_completed` ("A"),
+  `created_at`, `findings_fixed`, `findings_dismissed`, `threads_replied`,
+  `threads_resolved`, `files_changed`, `push_timestamp`, `notes`.
+- **Phase B (read-modify-write):** Read existing handoff file, merge new entries
+  into arrays (deduplicate by ID), update `phase_completed` to "B", refresh
+  `head_sha` if pushed. Do NOT overwrite `created_at` or `push_timestamp` from
+  Phase A — only set `push_timestamp` if Phase B itself pushed a new commit.
+  Preserve unknown fields.
+- **Phase C (read then delete):** Read handoff file for reviewer/state context.
+  Do NOT update or rewrite the file. After successful merge only, delete it:
+  `rm ~/.claude/handoffs/pr-{N}-handoff.json`. Deletion failure is non-fatal.
 ```
