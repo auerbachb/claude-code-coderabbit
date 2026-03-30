@@ -279,7 +279,7 @@ This is the most common issue. You've set `"allow": ["*"]` in `~/.claude/setting
 
 **Cause 1: A project-level `.claude/settings.json` exists.**
 
-A `.claude/settings.json` inside the repo can [override rather than merge](https://github.com/anthropics/claude-code/issues/17017) with your global `~/.claude/settings.json`, causing intermittent re-prompting even with `"allow": ["*"]` ([#27139](https://github.com/anthropics/claude-code/issues/27139)).
+A `.claude/settings.json` inside the repo can [override rather than merge](https://github.com/anthropics/claude-code/issues/17017) with your global `~/.claude/settings.json`, causing intermittent re-prompting even with `"allow": ["*"]` ([#13340](https://github.com/anthropics/claude-code/issues/13340), [#27139](https://github.com/anthropics/claude-code/issues/27139)).
 
 **Fix:** Delete any project-level `.claude/settings.json` files and rely on your global settings instead.
 
