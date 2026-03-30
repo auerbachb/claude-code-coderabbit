@@ -309,12 +309,22 @@ path = os.path.expanduser('~/.claude.json')
 if not os.path.exists(path):
     print('~/.claude.json not found. Open Claude Code once, then rerun this fix.')
     sys.exit(1)
-with open(path) as f:
-    data = json.load(f)
+try:
+    with open(path) as f:
+        data = json.load(f)
+except json.JSONDecodeError as e:
+    print(f'Invalid JSON in {path}: {e}')
+    print('Repair or restore ~/.claude.json, then re-run this fix.')
+    sys.exit(1)
+
+projects = data.get('projects') or {}
+if not isinstance(projects, dict):
+    print('Invalid ~/.claude.json: \"projects\" must be an object.')
+    sys.exit(1)
 
 flags = ['hasTrustDialogAccepted', 'hasClaudeMdExternalIncludesApproved', 'hasClaudeMdExternalIncludesWarningShown']
 total = 0
-for proj in data.get('projects', {}).values():
+for proj in projects.values():
     if not isinstance(proj, dict): continue
     for flag in flags:
         if not proj.get(flag):
