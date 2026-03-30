@@ -48,8 +48,8 @@ Extract each referenced issue number `N`. If `N` matches an open issue from Step
 - **Category:** `solved-by-pr`
 - **Rationale:** "PR #M (`title`) merged on `date` references `Closes #N` but issue remains open."
 
-**In the branch name**, search for patterns like `issue-N-` or `N-` at the start. If the branch name contains a number matching an open issue and the PR merged successfully, flag it as a weaker signal:
-- Only flag if the PR title or body also references the issue's topic (to avoid false positives from coincidental numbering).
+**In the branch name**, search for patterns like `issue-42-` or `42-` at the start. If the branch name contains a number matching an open issue and the PR merged successfully, flag it as a weaker signal:
+- Only flag if the PR title or body shares at least 2 significant keywords with the open issue's title (after lowercasing and removing stopwords like "add", "fix", "update", "the"). This avoids false positives from coincidental branch numbering.
 
 ## Step 5: Detect inactive issues
 
@@ -57,15 +57,17 @@ For each open issue from Step 1, check for recent activity:
 
 1. **Last update check:** Compare `updatedAt` against the inactivity threshold. If `updatedAt` is older than the threshold, the issue is a candidate.
 
-2. **Comment check (for candidates only):** For issues that pass the updatedAt filter, verify by checking comments:
+2. **Comment check (for candidates only):** For issues that pass the updatedAt filter, verify by fetching comment timestamps. Replace `{owner}`, `{repo}`, and the issue number with actual values:
    ```bash
-   gh api "repos/{owner}/{repo}/issues/{N}/comments" --jq 'length'
+   # Example for issue #42 — check if any comments fall within the threshold
+   gh api "repos/{owner}/{repo}/issues/42/comments" --jq '[.[] | .created_at] | sort | last'
    ```
-   Also check if any open PR references this issue:
+   If the most recent comment is older than the threshold (or there are no comments), the issue is still a candidate.
+
+   Also check if any open PR references this issue (substitute the issue number into the regex):
    ```bash
-   gh pr list --state open --json number,title,body --jq '.[] | select(.body | test("(?i)(closes|fixes|resolves)\\s+#N"))'
+   gh pr list --state open --json number,title,body --jq '.[] | select(.body | test("(?i)(closes|fixes|resolves)\\s+#42"))'
    ```
-   Replace `N` with the issue number.
 
 3. **If no comments in the threshold period AND no open PR references the issue**, flag it:
    - **Category:** `inactive`
@@ -81,15 +83,15 @@ For each open issue from Step 1 (that wasn't already flagged in Steps 4-5), chec
 
 1. **Extract file references** from the issue body — look for paths like `src/foo.ts`, `lib/bar.py`, function names, or component names.
 
-2. **For issues with file references**, check if those files have been substantially changed since the issue was created:
+2. **For issues with file references**, check if those files have been substantially changed since the issue was created. Replace `ISSUE_CREATED_DATE` with the issue's `createdAt` value (ISO date, e.g., `2026-01-15`) and `path/to/file` with the actual file path:
    ```bash
-   git log --since="ISSUE_CREATED_DATE" --oneline -- "path/to/file"
+   git log --since="2026-01-15" --oneline -- "src/utils/parser.ts"
    ```
    If the file has 5+ commits since the issue was created, it's a superseded candidate.
 
-3. **For issues referencing features or behaviors**, check if the described feature was added or removed by scanning recent commit messages:
+3. **For issues referencing features or behaviors**, check if the described feature was added or removed by scanning recent commit messages. Replace `KEYWORD` with a key term extracted from the issue (e.g., a feature name or component):
    ```bash
-   git log --since="ISSUE_CREATED_DATE" --oneline --grep="KEYWORD"
+   git log --since="2026-01-15" --oneline --grep="dark mode"
    ```
 
 4. **Only flag if the evidence is strong** — multiple commits touching the referenced files/features. A single commit is not enough (it might be an unrelated refactor).
@@ -182,5 +184,6 @@ Which issues should I close? (List numbers, category names, or "all")
 - **Respect issue labels.** If an issue has labels like `pinned`, `do-not-close`, `long-term`, or `epic`, skip it in the inactive and superseded checks. Still check it for solved-by-PR (since that's a factual signal, not a judgment call).
 - **When the user confirms closures**, close each issue with a comment:
   ```bash
-  gh issue close N --comment "Closing: [rationale from the recommendation]. Identified by backlog cleanup scan."
+  # Replace 42 with the actual issue number and customize the rationale
+  gh issue close 42 --comment "Closing: [rationale from the recommendation]. Identified by backlog cleanup scan."
   ```
