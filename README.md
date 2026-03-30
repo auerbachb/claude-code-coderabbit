@@ -224,7 +224,7 @@ Slash commands you can invoke during a session:
 
 **Verify before merge.** Claude won't offer to merge until it has read the source files and confirmed every acceptance criteria checkbox.
 
-**Two consecutive clean reviews.** Both the local and GitHub loops require two consecutive clean passes before proceeding. This catches the edge case where CodeRabbit marks a review complete but posts findings shortly after.
+**Two consecutive clean reviews (CR path).** When CodeRabbit is the reviewer, both the local and GitHub loops require two consecutive clean passes before proceeding. This catches the edge case where CodeRabbit marks a review complete but posts findings shortly after. The Greptile path uses a severity-gated merge gate instead — no P0 findings means merge-ready after one fix push.
 
 ---
 
