@@ -107,7 +107,7 @@ Subagents have a hardcoded **32K output token limit** that cannot be configured 
 - Fix all valid findings + fix lint/CI failures
 - Commit all fixes in ONE commit, push once
 - Reply to all review comment threads
-- **Write handoff file** to `~/.claude/handoffs/pr-{N}-handoff.json` (see "Structured Handoff Files" section below) with all findings fixed, threads replied/resolved, files changed, and HEAD SHA
+- **Write handoff file** to `~/.claude/handoffs/pr-{N}-handoff.json` (see "Structured Handoff Files" section below) with all findings fixed, threads replied/resolved, files changed, and HEAD SHA. Include `findings_dismissed` for any findings verified as false positives (each entry: `{id, reason}`).
 - **EXIT after push — do not enter polling loop**
 
 **Phase B: Review Loop** (lighter — incremental)
@@ -328,7 +328,7 @@ The orchestration uses two complementary state files:
 
 - **Location:** `~/.claude/handoffs/` (create directory if it doesn't exist: `mkdir -p ~/.claude/handoffs/`)
 - **Naming:** `pr-{N}-handoff.json` where `N` is the PR number (e.g., `pr-618-handoff.json`)
-- **One file per PR at any time.** Each phase overwrites the previous handoff file for that PR.
+- **One file per PR at any time.** Phase A creates the initial handoff file. Subsequent phases (B, C) perform a read-modify-write update: read the existing file, merge changes (append new array entries, update scalar fields), preserve unknown fields, and write back. This ensures no data from prior phases is lost.
 - **Lifecycle:** Created by Phase A → read/updated by Phase B → deleted by Phase C after merge.
 
 #### Handoff File Schema
