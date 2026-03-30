@@ -73,11 +73,9 @@ Claude Code loads `CLAUDE.md` from the project root first, then `~/.claude/CLAUD
 
 ## Permissions and settings
 
-### Project-level settings (`.claude/settings.json`)
+### Why this repo has no `.claude/settings.json`
 
-This repo includes a `.claude/settings.json` with broad permission allow rules that ensure autonomous operation without prompting for every tool call, including in **git worktrees** which have a [known bug](https://github.com/anthropics/claude-code/issues/28248) where bypass permissions don't reliably carry over.
-
-The project-level settings apply to anyone working in this repo. They don't affect other repos.
+This repo intentionally omits a project-level `.claude/settings.json`. Project-level permissions blocks can [override rather than merge](https://github.com/anthropics/claude-code/issues/17017) with your global `~/.claude/settings.json`, causing intermittent re-prompting — even with `"allow": ["*"]`. Set permissions once in your global settings (via `global-settings.json` below) and let all repos inherit them.
 
 ### Global settings (`~/.claude/settings.json`)
 
@@ -279,29 +277,18 @@ During planning, the config tells Claude to pick the best ideas from both plans.
 
 This is the most common issue. You've set `"allow": ["*"]` in `~/.claude/settings.json`, but Claude Code still prompts you to approve edits, bash commands, or the trust dialog. There are two independent causes — fix both.
 
-**Cause 1: Project-level settings override your global wildcard.**
+**Cause 1: A project-level `.claude/settings.json` exists.**
 
-A `.claude/settings.json` inside the repo (or inside a worktree) takes precedence over `~/.claude/settings.json`. If the project-level file uses specific patterns like `Edit(*)` instead of `*`, certain operations (especially cross-worktree edits) won't match and will trigger prompts.
+A `.claude/settings.json` inside the repo can [override rather than merge](https://github.com/anthropics/claude-code/issues/17017) with your global `~/.claude/settings.json`, causing intermittent re-prompting even with `"allow": ["*"]` ([#27139](https://github.com/anthropics/claude-code/issues/27139)).
 
-**Fix:** Ensure every `.claude/settings.json` in the repo and its worktrees uses the `*` wildcard. Note: if your worktrees live outside the repo directory (e.g., sibling directories), run the find command from a parent directory that contains all of them.
+**Fix:** Delete any project-level `.claude/settings.json` files and rely on your global settings instead.
 
 ```bash
-# Find all project-level settings files (use a parent dir that covers worktrees too)
-find /path/to/your/repo -name "settings.json" -path "*/.claude/*" -not -path "*/.git/*"
+# List project-level settings files
+find /path/to/your/repo -type f -name "settings.json" -path "*/.claude/*" -not -path "*/.git/*"
 
-# Update each one — merges the wildcard without wiping other settings
-find /path/to/your/repo -name "settings.json" -path "*/.claude/*" -not -path "*/.git/*" -print0 \
-  | while IFS= read -r -d '' f; do
-      python3 - "$f" <<'PY'
-import json, sys
-p = sys.argv[1]
-with open(p) as fh:
-    data = json.load(fh)
-data.setdefault("permissions", {})["allow"] = ["*"]
-with open(p, "w") as fh:
-    json.dump(data, fh, indent=2)
-PY
-    done
+# After reviewing the list, delete them
+find /path/to/your/repo -type f -name "settings.json" -path "*/.claude/*" -not -path "*/.git/*" -delete
 ```
 
 **Cause 2: Trust dialog flags reset on new worktrees.**
