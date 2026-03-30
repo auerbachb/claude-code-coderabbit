@@ -11,7 +11,7 @@ After setup, Claude Code will automatically:
 - **GitHub review as safety net** — After pushing, CodeRabbit auto-reviews on GitHub. Claude polls for findings and resolves them. If CodeRabbit is rate-limited, Greptile is triggered as a fallback.
 - **Handle rate limits** — Batches fixes into single commits, respects CodeRabbit's hourly limits, falls back to Greptile or self-review when throttled.
 - **Verify acceptance criteria** — Before merging, reads every Test Plan checkbox, verifies each against the code, and checks them off.
-- **Squash and merge** — Clean PRs get squash-merged with branch cleanup, only after user confirmation.
+- **Squash and merge** — Clean PRs get squash-merged with branch cleanup after merge gates pass.
 
 ---
 
@@ -277,13 +277,13 @@ CR posts findings? ──No──> CR rate-limited?
       Yes                     Yes           No
        |                       |            |
        v                       v            v
-Verify each finding    Trigger          Wait for CR
-against code           @greptileai      completion signal
+Verify each finding    Check Greptile   Wait for CR
+against code           daily budget     completion signal
        |                  |                  |
        v                  v                  v
-Fix all findings    Poll for Greptile   2 clean CR passes?
-in one commit,      response (5 min)         |
-push                     |                  Yes
+Fix all findings    Budget OK?          2 clean CR passes?
+in one commit,      Yes: @greptileai         |
+push                No: self-review         Yes
        |                  v                  |
        v            Process findings         v
 Reply to every      same as CR          Merge gate met
