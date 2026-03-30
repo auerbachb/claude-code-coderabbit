@@ -328,8 +328,8 @@ The orchestration uses two complementary state files:
 
 - **Location:** `~/.claude/handoffs/` (create directory if it doesn't exist: `mkdir -p ~/.claude/handoffs/`)
 - **Naming:** `pr-{N}-handoff.json` where `N` is the PR number (e.g., `pr-618-handoff.json`)
-- **One file per PR at any time.** Phase A creates the initial handoff file. Subsequent phases (B, C) perform a read-modify-write update: read the existing file, merge changes (append new array entries, update scalar fields), preserve unknown fields, and write back. This ensures no data from prior phases is lost.
-- **Lifecycle:** Created by Phase A → read/updated by Phase B → deleted by Phase C after merge.
+- **One file per PR at any time.** Phase A creates the initial handoff file. Phase B performs a read-modify-write update: read the existing file, merge changes (append new array entries, update scalar fields), preserve unknown fields, and write back. Phase C only reads the file for context, then deletes it after successful merge.
+- **Lifecycle:** Created by Phase A → read/updated by Phase B → read then deleted by Phase C after merge.
 
 #### Handoff File Schema
 
