@@ -317,6 +317,15 @@ BEFORE triggering `@coderabbitai full review` or entering the polling loop:
 4. Only request a new review after all prior findings are addressed
 Skipping this step wastes a review cycle and burns CR quota.
 
+### Step 0b: Check ALL CI check-runs (MANDATORY — every poll cycle)
+Do NOT only check CodeRabbit check-runs. Check ALL check-runs every cycle:
+`gh api "repos/{owner}/{repo}/commits/{SHA}/check-runs?per_page=100" --jq '.check_runs[] | {name, status, conclusion}'`
+If ANY check-run has `conclusion: "failure"` (test, lint, build, audit, gitleaks, etc.):
+1. Read the failure output: `gh api "repos/{owner}/{repo}/check-runs/{ID}" --jq '.output.summary'`
+2. If test/lint/build failure -> fix code, commit, push BEFORE continuing review loop
+3. If transient/infra failure -> note it, retry with no-op commit if needed
+A PR with passing CR but failing CI is NOT merge-ready. Report CI status to user.
+
 ### Step 1: Check if PR is already on Greptile
 If this PR has already switched to Greptile (check session-state `reviewer` field), skip CR polling entirely — go directly to Step 3 and trigger `@greptileai`.
 

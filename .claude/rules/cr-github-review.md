@@ -44,9 +44,26 @@ After pushing a commit to a PR, **automatically** enter the CR review loop. Do n
   - **Fast-path rate limit detection:** If EITHER endpoint shows rate limiting — check-run has `conclusion: "failure"` with `output.title` containing "rate limit" (case-insensitive), OR commit status has `state: "failure"`/`state: "error"` with `description` containing "rate limit" — **trigger Greptile IMMEDIATELY.** Do not wait 7 minutes. This catches rate limits within ~60-120 seconds of pushing. Sticky assignment applies (see below).
   - **Do NOT confuse the ack with completion.** The "Actions performed — Full review triggered" issue comment means CR **started** reviewing — it does NOT mean the review is finished. The CI check "CodeRabbit — Review completed" is what signals actual completion.
 - **CR's GitHub username is `coderabbitai[bot]` (with the `[bot]` suffix).** Always filter by `.user.login == "coderabbitai[bot]"` — NOT bare `coderabbitai`. Using the wrong username will silently miss all CR comments.
-- Track the **highest comment ID** seen so far across all three endpoints. Any comment from `coderabbitai[bot]` with an ID greater than the watermark is a new finding that needs attention.
+- **Track the highest review ID** (from `pulls/{N}/reviews`) as your watermark — NOT inline comment IDs. New reviews can have inline comment IDs *lower* than comments from previous reviews because they use different ID sequences. Any review from `coderabbitai[bot]` with `review.id` above the watermark is new — fetch ALL its associated comments regardless of their individual comment IDs. For issue comments (`issues/{N}/comments`), continue tracking by comment ID since those share a single sequence.
 - If CR responds, process immediately
 - **Hard timeout: 7 minutes.** If CR has not delivered a review after 7 minutes of polling, stop waiting and trigger **Greptile**. Do NOT keep polling — it wastes tokens and risks session timeout. Sticky assignment applies (see below).
+
+### CI Health Check (MANDATORY — every poll cycle)
+
+In addition to checking for CodeRabbit check-runs, **check ALL check-runs every poll cycle.** The polling loop must not be blind to test, lint, build, audit, gitleaks, or any other CI check failures.
+
+```bash
+gh api "repos/{owner}/{repo}/commits/{SHA}/check-runs?per_page=100" \
+  --jq '.check_runs[] | {name, status, conclusion}'
+```
+
+**Rules:**
+- If ANY check-run has `conclusion: "failure"` (not just CodeRabbit), **investigate immediately.**
+  - Read the check-run's output: `gh api "repos/{owner}/{repo}/check-runs/{CHECK_RUN_ID}" --jq '.output.summary'`
+  - If it's a test/lint/build failure: fix the code, commit, and push before continuing the review loop.
+  - If it's a transient/infra failure (e.g., runner timeout): note it but don't block — retry by pushing a no-op commit if needed.
+- **Do not wait for CR's review to notice CI failures.** CR reviews code quality; CI checks correctness. A PR with passing CR but failing tests is not merge-ready.
+- Log which checks passed/failed in your status update to the user: "CI: 5/6 checks passed, `test` failed — investigating."
 
 ### Timeout & Fallback — Two Trigger Paths to Greptile
 
