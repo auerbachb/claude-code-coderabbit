@@ -156,7 +156,7 @@ Issues assigned during the sprint that saw no PR activity:
 
 For each assigned open issue, check if any PR references it:
 ```bash
-gh pr list --state all --search "linked:issue:$ISSUE_NUM" --json number --limit 5
+gh pr list --state all --search "\"#$ISSUE_NUM\"" --json number --limit 5
 ```
 
 If no PRs reference it, the issue may be stalled.
