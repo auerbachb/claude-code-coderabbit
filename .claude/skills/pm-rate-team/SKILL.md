@@ -90,7 +90,7 @@ This returns the GitHub username of the person (or bot) who closed the issue. At
 gh api --paginate "repos/{owner}/{repo}/pulls?state=all&sort=updated&direction=desc&per_page=100" \
   | jq -r '.[] | select(.updated_at > "'"$SINCE_ISO"'") | .number' | while read -r pr_num; do
   gh api "repos/{owner}/{repo}/pulls/$pr_num/reviews?per_page=100" \
-    --jq '.[] | select(.submitted_at > "'"$SINCE_ISO"'") | {reviewer: .user.login, pr: '"$pr_num"', state: .state}'
+    --jq '.[] | select(.submitted_at > "'"$SINCE_ISO"'") | select(.user.login | (endswith("[bot]") or . == "github-actions") | not) | {reviewer: .user.login, pr: '"$pr_num"', state: .state}'
 done
 ```
 
