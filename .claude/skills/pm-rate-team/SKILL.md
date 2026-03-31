@@ -73,6 +73,16 @@ gh issue list --state all --search "created:>$SINCE_DATE" --json number,title,au
 gh issue list --state closed --search "closed:>$SINCE_DATE" --json number,title,closedAt --limit 500
 ```
 
+**Closer attribution:** The `gh issue list` command does not include a `closedBy` field. To attribute issue closures to contributors, query the events API for each closed issue:
+
+```bash
+# For each closed issue number from above:
+gh api "repos/{owner}/{repo}/issues/$ISSUE_NUM/events" \
+  --jq '[.[] | select(.event == "closed")] | last | .actor.login'
+```
+
+This returns the GitHub username of the person (or bot) who closed the issue. Attach this `closer` value to each issue record, then compute per-contributor closed counts from the augmented data.
+
 ### 3d: Review participation (reviews given to others)
 
 ```bash
