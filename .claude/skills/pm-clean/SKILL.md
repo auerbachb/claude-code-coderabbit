@@ -68,9 +68,9 @@ For each open issue from Step 1, check for recent activity:
 
    If the jq result is `null` (empty comments array), treat it as "no recent comments" — the issue remains a candidate.
 
-   Also check if any open PR references this issue (substitute the issue number into the regex):
+   Also check if any open PR references this issue (title or body; substitute the issue number). Use null-coalescing to handle PRs with empty bodies:
    ```bash
-   gh pr list --state open --json number,title,body --jq '.[] | select(.body | test("(?i)(close[sd]?|fix(e[sd])?|resolve[sd]?)\\s+#42"))'
+   gh pr list --state open --json number,title,body --jq '.[] | select(((.title // "") + " " + (.body // "")) | test("(?i)(#42\\b|close[sd]?\\s+#42|fix(e[sd])?\\s+#42|resolve[sd]?\\s+#42)"))'
    ```
 
 3. **Commit-reference check (for candidates only):** Verify whether recent commits reference the issue number in their messages:
