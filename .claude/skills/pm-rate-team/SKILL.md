@@ -76,9 +76,9 @@ gh issue list --state closed --search "closed:>$SINCE_DATE" --json number,title,
 **Closer attribution:** The `gh issue list` command does not include a `closedBy` field. To attribute issue closures to contributors, query the events API for each closed issue:
 
 ```bash
-# For each closed issue number from above:
-gh api "repos/{owner}/{repo}/issues/$ISSUE_NUM/events" \
-  --jq '[.[] | select(.event == "closed")] | last | .actor.login'
+# For each closed issue number from above (paginate to avoid truncation):
+gh api --paginate "repos/{owner}/{repo}/issues/$ISSUE_NUM/events?per_page=100" \
+  | jq -r '[.[] | select(.event == "closed")] | last | .actor.login'
 ```
 
 This returns the GitHub username of the person (or bot) who closed the issue. Attach this `closer` value to each issue record, then compute per-contributor closed counts from the augmented data.
@@ -101,8 +101,8 @@ For each merged PR, check if CodeRabbit's first review passed clean:
 
 1. Fetch the first review from `coderabbitai[bot]` on that PR (sort by `submitted_at`, take the earliest)
 2. A PR counts as **first-pass success** when the first `coderabbitai[bot]` review meets BOTH criteria:
-   - No inline comments from `coderabbitai[bot]` on the PR: `gh api "repos/{owner}/{repo}/pulls/$PR_NUM/comments" --jq '[.[] | select(.user.login == "coderabbitai[bot]")]'` returns an empty array
-   - No review with GitHub state `CHANGES_REQUESTED` from `coderabbitai[bot]`
+   - No inline comments on that first review: `gh api "repos/{owner}/{repo}/pulls/$PR_NUM/reviews/$FIRST_CR_REVIEW_ID/comments?per_page=100"` returns an empty array
+   - The first `coderabbitai[bot]` review state is not `CHANGES_REQUESTED`
 3. Calculate: (PRs passing CR on first push) / (total PRs with CR reviews) × 100%
 
 If no `coderabbitai[bot]` reviews are found on any PR in the period, skip this metric entirely with a note: "CodeRabbit not detected — CR first-pass rate skipped."
