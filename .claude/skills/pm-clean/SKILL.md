@@ -73,11 +73,18 @@ For each open issue from Step 1, check for recent activity:
    gh pr list --state open --json number,title,body --jq '.[] | select(.body | test("(?i)(closes|fixes|resolves)\\s+#42"))'
    ```
 
-3. **If no comments in the threshold period AND no open PR references the issue**, flag it:
-   - **Category:** `inactive`
-   - **Rationale:** "No activity for X days (last updated: `date`). No open PRs reference this issue."
+3. **Commit-reference check (for candidates only):** Verify whether recent commits reference the issue number in their messages:
+   ```bash
+   # Example for issue #42 — check for commits mentioning #42 in the threshold period
+   git log --since="THRESHOLD_DATE" --oneline --grep="#42"
+   ```
+   If any commits match, treat as recent activity and do not flag as inactive.
 
-4. **If the issue has comments but all are older than the threshold**, still flag but note the last comment date.
+4. **If no comments in the threshold period AND no open PR references the issue AND no recent commit references**, flag it:
+   - **Category:** `inactive`
+   - **Rationale:** "No activity for X days (last updated: `date`). No recent comments, PR references, or commit references."
+
+5. **If the issue has comments but all are older than the threshold**, still flag but note the last comment date.
 
 **Performance note for large backlogs:** If there are more than 50 inactive candidates after the `updatedAt` filter, limit the per-issue API calls (comment check + PR reference check) to the 50 oldest issues. Note the remaining count: "N additional inactive issues not fully checked — run again with a shorter threshold to review them."
 
