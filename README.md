@@ -134,7 +134,7 @@ The CLI installs to `~/.local/bin/coderabbit`. If it's not in your PATH, the con
 
 **Optional: Greptile** — An AI code reviewer used as a fallback when CodeRabbit is rate-limited or unresponsive. Install the [Greptile GitHub App](https://greptile.com) on your repos. Greptile app settings are configured via the Greptile web dashboard (app.greptile.com). The `greptile.md` rule file in this repo tells Claude how to use Greptile as a fallback reviewer.
 
-### Step 8: Set up CodeRabbit for a repo (per-repo)
+### Set up CodeRabbit for a repo (per-repo)
 
 For each repo where you want the full workflow:
 
@@ -142,7 +142,7 @@ For each repo where you want the full workflow:
 2. Optionally add a `.coderabbit.yaml` to the repo root for custom review rules.
 3. The config auto-detects whether CodeRabbit is installed. If it's not, those sections are skipped.
 
-### Step 9: Verify your setup
+### Verify your setup
 
 ```bash
 # Check symlinks point to this repo
@@ -535,7 +535,7 @@ The local review loop times out after 2 minutes. The GitHub loop times out after
 Yes. The config auto-detects CodeRabbit. Without it, Claude uses self-review as a fallback, and you still get the PR workflow, branch naming, acceptance criteria verification, and squash-merge flow. (Greptile is only triggered as a fallback when CodeRabbit is installed but rate-limited or unresponsive.)
 
 **Can I use this without Greptile?**
-Yes. Greptile is optional — it's only triggered when CodeRabbit is rate-limited or unresponsive. Without it, the fallback chain is CodeRabbit -> self-review.
+Yes. Greptile is optional — it's only triggered when CodeRabbit is rate-limited or unresponsive. Without it, the fallback chain is CodeRabbit -> self-review. Note that self-review is risk-reduction only and does **not** satisfy the merge gate by itself.
 
 **What is `pm-config.md` and do I need it?**
 It's a per-repo config file bootstrapped by `/pm` on first run. It stores your team roster, OKRs, infrastructure, and architecture detection. You only need it if you use the PM skill family. Other skills and the review workflow work without it.
