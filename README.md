@@ -228,7 +228,7 @@ Presents recommendations grouped by category. Never auto-closes — always waits
 
 Rank open issues by impact on a stated business goal. When OKRs are defined in `pm-config.md`, uses them as an additional ranking signal.
 
-```
+```text
 /prioritize increase API throughput | @alice backend-only | 25
 ```
 
@@ -374,7 +374,7 @@ The PM config file is bootstrapped by `/pm` on first run and updated by `/pm-upd
 
 ### Symlink topology
 
-```
+```text
 ~/.claude/
   CLAUDE.md          ->  <repo>/CLAUDE.md
   rules/             ->  <repo>/.claude/rules/
