@@ -145,7 +145,7 @@ Identify PRs and issues that stalled during the sprint:
 PRs that were open for more than 3 days before merge (or are still open):
 
 ```bash
-gh pr list --state all --search "created:>=$SINCE_DATE" --json number,title,author,createdAt,mergedAt,state --limit 200
+gh pr list --state all --search "created:>=$SINCE_DATE merged:>=$SINCE_DATE" --json number,title,author,createdAt,mergedAt,state --limit 200
 ```
 
 Flag PRs where `mergedAt - createdAt > 3 days` or where state is still `open` and `createdAt` is more than 3 days ago.
@@ -199,7 +199,7 @@ For review participation:
 
 ```bash
 # Server-side filter: only PRs updated during the review period
-gh pr list --search "updated:>=$SINCE_DATE" --state all --limit 100 --json number --jq '.[].number' | while read -r pr_num; do
+gh pr list --search "updated:>=$SINCE_DATE" --state all --limit 200 --json number --jq '.[].number' | while read -r pr_num; do
   gh api "repos/{owner}/{repo}/pulls/$pr_num/reviews?per_page=100" \
     --jq '.[] | select(.submitted_at > "'"$SINCE_ISO"'") | select(.user.login | (endswith("[bot]") or . == "github-actions") | not) | {reviewer: .user.login, pr: '"$pr_num"'}'
 done
