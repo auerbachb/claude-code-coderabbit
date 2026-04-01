@@ -15,7 +15,7 @@ Prevent accidental `.env` deletion and other destructive operations from the rep
 
 ## Subagent Warning (MANDATORY)
 
-When spawning subagents, include this warning in the prompt:
+When spawning subagents, include this warning in the prompt AND always set `mode: "bypassPermissions"` on the Agent tool call (see `subagent-orchestration.md` for why):
 
 ```
 SAFETY: Do NOT delete, overwrite, move, or modify .env files — anywhere, any repo.

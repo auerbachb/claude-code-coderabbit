@@ -1,16 +1,17 @@
 # Subagent Context
 
-> **Always:** Pass ALL rule files to subagents. Use phase decomposition (A/B/C). Timestamp every message. Monitor subagent health. Report failures immediately. Enter monitor mode when subagents are active. Write handoff files on phase completion (Phase A writes `pr-{N}-handoff.json`; Phase B updates it). Read handoff files before reconstructing state from GitHub API (Phases B/C). Delete the handoff file on successful merge (Phase C).
+> **Always:** Pass ALL rule files to subagents. Use `mode: "bypassPermissions"` on every Agent tool call. Use phase decomposition (A/B/C). Timestamp every message. Monitor subagent health. Report failures immediately. Enter monitor mode when subagents are active. Write handoff files on phase completion (Phase A writes `pr-{N}-handoff.json`; Phase B updates it). Read handoff files before reconstructing state from GitHub API (Phases B/C). Delete the handoff file on successful merge (Phase C).
 > **Ask first:** Respawning a failed subagent — tell the user what happened first. Breaking monitor mode for explicit user requests — warn about paused monitoring first.
-> **Never:** Summarize rules for subagents. Fire-and-forget subagents. Let a stalled PR go unreported. Skip timestamps. Go >5 minutes without a user-visible message. Report a PR as "awaiting review" for >5 minutes without a Phase B agent running. Do substantive work (coding, issue creation, file editing) while subagents are active.
+> **Never:** Summarize rules for subagents. Spawn subagents without `mode: "bypassPermissions"`. Fire-and-forget subagents. Let a stalled PR go unreported. Skip timestamps. Go >5 minutes without a user-visible message. Report a PR as "awaiting review" for >5 minutes without a Phase B agent running. Do substantive work (coding, issue creation, file editing) while subagents are active.
 
-When spawning subagents via the Task tool, **always pass the FULL contents of ALL rule files into the subagent's prompt.** Subagents do not automatically inherit CLAUDE.md or `.claude/rules/` context — they only see what you put in their prompt.
+When spawning subagents via the Agent tool, **always pass the FULL contents of ALL rule files into the subagent's prompt.** Subagents do not automatically inherit CLAUDE.md or `.claude/rules/` context — they only see what you put in their prompt.
 
-**How to pass rules to subagents:**
-1. Read the root `CLAUDE.md` — check **project root first** (`cat ./CLAUDE.md`), fall back to global (`cat ~/.claude/CLAUDE.md`) only if no project-level file exists
-2. Read ALL rule files — check **project root first** (`cat ./.claude/rules/*.md`), fall back to global (`cat ~/.claude/rules/*.md`)
-3. Include the COMPLETE output of both in the subagent's task description
-4. Do NOT summarize, excerpt, or paraphrase — pass the complete files
+**How to spawn subagents:**
+1. **Always set `mode: "bypassPermissions"`** on the Agent tool call. Parent permissions do not propagate to subagents — without this flag, subagents will prompt for permission on every file read/write even when the parent has bypass enabled.
+2. Read the root `CLAUDE.md` — check **project root first** (`cat ./CLAUDE.md`), fall back to global (`cat ~/.claude/CLAUDE.md`) only if no project-level file exists
+3. Read ALL rule files — check **project root first** (`cat ./.claude/rules/*.md`), fall back to global (`cat ~/.claude/rules/*.md`)
+4. Include the COMPLETE output of both in the subagent's task description
+5. Do NOT summarize, excerpt, or paraphrase — pass the complete files
 
 > **Why project-local first:** Per-project configs override global ones. If a repo has its own `CLAUDE.md` or `.claude/rules/`, those are the active instructions — not `~/.claude/`. Passing the global file when a project-level file exists will give subagents the wrong rules.
 
