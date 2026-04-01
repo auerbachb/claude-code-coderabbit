@@ -232,6 +232,8 @@ Rank open issues by impact on a stated business goal. When OKRs are defined in `
 /prioritize increase API throughput | @alice backend-only | 25
 ```
 
+The `|` characters are argument separators (not shell pipes).
+
 Produces a tiered list (Critical / High / Medium / Low) with dependency annotations, OKR alignment, and next actions. Includes a "stop doing" section if the engineer's current work is misaligned.
 
 #### `/pm-team-standup [since-time]`
@@ -349,6 +351,7 @@ All hooks are idempotent and fail-safe — they exit silently on errors rather t
 | `global-settings.json` | Copied to `~/.claude/settings.json` | Hooks, permissions (`allow: ["*"]` for autonomous operation), model preference (`opus`), experimental flags (`AGENT_TEAMS=1`) |
 | `.coderabbit.yaml` | Repo root | CodeRabbit review config: assertive profile, token-efficiency checks for rule files, knowledge base integration |
 | `.claude/pm-config.md` | Per-repo (bootstrapped by `/pm`) | PM configuration: role, OKRs, team roster, infrastructure/architecture detection, dependency rules, workflow rules |
+| `~/.claude/session-state.json` | Runtime (auto-created) | Session orchestration state: active PRs and their phases, CR quota tracking, Greptile daily budget (`budget` field, default 40), active subagents. Auto-managed by Claude Code — safe to edit the `budget` field manually. |
 
 ### `pm-config.md` sections
 
@@ -475,7 +478,7 @@ clean
 
 ---
 
-## Key design decisions
+## Key Design Decisions
 
 **Worktrees by default.** Every session starts by creating a git worktree — an isolated working directory with its own branch. Multiple Claude Code agents can work on the same repo simultaneously without conflicts. The root repo stays clean on `main`.
 
