@@ -74,7 +74,7 @@ This gives Claude Code its core instructions in every project. The symlink means
 ln -sfn "$(pwd)/.claude/rules" ~/.claude/rules
 ```
 
-Rule files in `.claude/rules/` auto-load alongside `CLAUDE.md`. They contain the detailed review, planning, safety, and orchestration workflows.
+Rule files in `.claude/rules/` auto-load alongside `CLAUDE.md` for the parent agent session. Subagents do not auto-load these files — pass full rule content explicitly when spawning subagents. These files contain the detailed review, planning, safety, and orchestration workflows.
 
 ### Step 5: Install global settings (hooks + permissions)
 
@@ -508,7 +508,7 @@ mkdir -p /path/to/your/project/.claude/rules
 cp -R .claude/rules/. /path/to/your/project/.claude/rules/
 ```
 
-Claude Code loads project-level `CLAUDE.md` first, then falls back to `~/.claude/CLAUDE.md`. Per-project configs let you override specific rules per repo.
+Claude Code loads project-level `CLAUDE.md` first, then falls back to `~/.claude/CLAUDE.md`. The same project-first precedence applies to `.claude/rules/*.md`. Per-project configs let you override specific behavior per repo.
 
 > **Do not use project-level `.claude/settings.json` files for permissions.** They interfere with the global wildcard `allow: ["*"]` and cause more re-prompting, not less. See [Troubleshooting](#troubleshooting).
 
