@@ -198,8 +198,15 @@ Scan for orchestration state files:
 # Session state (high-level orchestration)
 test -f ~/.claude/session-state.json && cat ~/.claude/session-state.json || echo "NO_SESSION_STATE"
 
-# Per-PR handoff files
-ls ~/.claude/handoffs/pr-*-handoff.json 2>/dev/null || echo "NO_HANDOFF_FILES"
+# Per-PR handoff files (emit valid JSON content per file)
+found_handoffs=false
+for f in ~/.claude/handoffs/pr-*-handoff.json; do
+  [ -f "$f" ] || continue
+  found_handoffs=true
+  echo "--- $f ---"
+  cat "$f"
+done
+$found_handoffs || echo "NO_HANDOFF_FILES"
 ```
 
 If `session-state.json` exists, extract and summarize:
@@ -239,7 +246,7 @@ if [ -z "$REPO_ROOT" ]; then
   echo "NO_MEMORY_INDEX"
 else
   # The memory path uses the absolute path with slashes replaced by dashes
-  REPO_SLUG="$(echo "$REPO_ROOT" | sed 's|/|-|g')"
+  REPO_SLUG="$(echo "$REPO_ROOT" | sed 's|^/||; s|/|-|g')"
   MEMORY_PATH="$HOME/.claude/projects/-${REPO_SLUG}/memory/MEMORY.md"
   test -f "$MEMORY_PATH" && cat "$MEMORY_PATH" || echo "NO_MEMORY_INDEX"
 fi
