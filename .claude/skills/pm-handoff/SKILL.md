@@ -234,10 +234,15 @@ Locate and read the memory index file:
 
 ```bash
 # Derive the project memory path from the repo root
-REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
-# The memory path uses the absolute path with slashes replaced by dashes
-MEMORY_PATH="$HOME/.claude/projects/-$(echo "$REPO_ROOT" | sed 's|/|-|g')/memory/MEMORY.md"
-test -f "$MEMORY_PATH" && cat "$MEMORY_PATH" || echo "NO_MEMORY_INDEX"
+REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+if [ -z "$REPO_ROOT" ]; then
+  echo "NO_MEMORY_INDEX"
+else
+  # The memory path uses the absolute path with slashes replaced by dashes
+  REPO_SLUG="$(echo "$REPO_ROOT" | sed 's|/|-|g')"
+  MEMORY_PATH="$HOME/.claude/projects/-${REPO_SLUG}/memory/MEMORY.md"
+  test -f "$MEMORY_PATH" && cat "$MEMORY_PATH" || echo "NO_MEMORY_INDEX"
+fi
 ```
 
 If the memory index exists, include its entries as a "Lessons & Context" section:

@@ -34,8 +34,15 @@ If config exists, parse it using line-anchored `^## ` headers (same logic as `/p
 # Session-wide orchestration state
 test -f ~/.claude/session-state.json && cat ~/.claude/session-state.json || echo "NO_SESSION_STATE"
 
-# Per-PR handoff files
-ls ~/.claude/handoffs/pr-*-handoff.json 2>/dev/null && cat ~/.claude/handoffs/pr-*-handoff.json || echo "NO_HANDOFF_FILES"
+# Per-PR handoff files (iterate to emit valid JSON per file)
+found_handoffs=false
+for f in ~/.claude/handoffs/pr-*-handoff.json; do
+  [ -f "$f" ] || continue
+  found_handoffs=true
+  echo "--- $f ---"
+  cat "$f"
+done
+$found_handoffs || echo "NO_HANDOFF_FILES"
 ```
 
 Parse any found state into an assignments table:
