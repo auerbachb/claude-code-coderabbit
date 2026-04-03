@@ -31,7 +31,12 @@ gh api repos/{owner}/{repo}/issues/$NUMBER/comments --jq '.[] | select(.user.log
 ```
 
 - Look for plan structure markers: file lists, implementation steps, phase breakdowns
-- If a CR plan exists, extract the **file list** — these become the primary "files likely touched" signal
+- If a CR plan exists, extract the **file list** using these patterns:
+  - Look for headings containing "Files", "Files likely touched", "File list", or "Touched files" (case-insensitive)
+  - Parse the block following that heading: bullet/numbered lists (`-`, `*`, `+`, or digits + `.`) or fenced code blocks with one path per line
+  - Also capture inline backticked paths (e.g., `` `src/foo.ts` ``)
+  - Normalize: trim whitespace, strip leading `./`, deduplicate, skip lines that don't look like file paths (no `/` and no file extension)
+- The extracted file list becomes the primary "files likely touched" signal
 - Store the CR plan content verbatim for inclusion in the output prompt
 - If no CR plan exists, note it — the output will recommend waiting or proceeding with exploration
 
@@ -53,7 +58,7 @@ From the gathered data, compute these discrete signals:
 
 | Signal | How to compute |
 |--------|---------------|
-| `file_count` | Count of files from CR plan file list. If no CR plan, count tokens in issue body matching file path patterns (strings containing `/` with a file extension like `.ts`, `.md`, `.json`, `.py`, `.sh`, `.yml`, `.yaml`). Default: 0 if no CR plan and no file paths detected. |
+| `file_count` | Per-issue count of files from CR plan file list (see Step 2 parsing). If no CR plan, count strings in the issue body that contain `/`, end with a file extension (`.ts`, `.md`, `.json`, `.py`, `.sh`, `.yml`, `.yaml`), and do NOT start with `http://` or `https://`. Default: 0 if no CR plan and no file paths detected. For batch tier decisions, use the highest per-issue `file_count`. |
 | `dependency_count` | Total dependency references found in Step 3. |
 | `touches_rules` | `true` if any file path matches `.claude/rules/*.md` OR issue body mentions "rule file", "workflow protocol", "CLAUDE.md". |
 | `touches_skill` | `true` if any file path matches `.claude/skills/` OR issue is about creating/modifying a skill. |
@@ -83,7 +88,7 @@ Assign Standard if ANY of these are true (and Heavy was not triggered):
 - `file_count` is 2–5
 - `ac_count > 3`
 - `touches_skill` is true
-- Issue describes a single feature with moderate complexity (judgment call based on body content)
+- Issue body is >200 words with structural patterns (includes a user story, describes a new feature via keywords like "implement", "add", "support")
 - `is_multi_issue` with mixed complexity (at least one non-trivial issue that didn't trigger Heavy)
 
 ### Light — Sonnet 4.6 / Medium effort
