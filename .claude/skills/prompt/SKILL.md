@@ -1,6 +1,6 @@
 ---
 name: prompt
-description: Analyze GitHub issues and generate a tailored prompt with model/effort recommendation. Use when starting work on an issue to right-size the model and pre-extract context.
+description: Analyze GitHub issues to assess complexity, classify effort tier, recommend model selection, and generate tailored prompts with pre-extracted context. Use when starting work, planning sprints, estimating effort, right-sizing model choice, or analyzing issue batches.
 argument-hint: "#123 [#124 #125 ...] (one or more issue numbers)"
 ---
 
@@ -53,7 +53,7 @@ From the gathered data, compute these discrete signals:
 
 | Signal | How to compute |
 |--------|---------------|
-| `file_count` | Count of files from CR plan file list. If no CR plan, estimate from file paths mentioned in issue body. Default: 0 (unknown). |
+| `file_count` | Count of files from CR plan file list. If no CR plan, count tokens in issue body matching file path patterns (strings containing `/` with a file extension like `.ts`, `.md`, `.json`, `.py`, `.sh`, `.yml`, `.yaml`). Default: 0 if no CR plan and no file paths detected. |
 | `dependency_count` | Total dependency references found in Step 3. |
 | `touches_rules` | `true` if any file path matches `.claude/rules/*.md` OR issue body mentions "rule file", "workflow protocol", "CLAUDE.md". |
 | `touches_skill` | `true` if any file path matches `.claude/skills/` OR issue is about creating/modifying a skill. |
@@ -65,6 +65,8 @@ From the gathered data, compute these discrete signals:
 ## Step 5: Classify Tier
 
 Apply this decision tree. When signals conflict, choose the **higher** tier (conservative on quality).
+
+**Batch handling rule:** When multiple issues are provided, the tier is determined by the most complex issue in the batch. A batch of 3 issues where one is Heavy makes the whole batch Heavy.
 
 ### Heavy — Opus 4.6 1M / High effort
 
@@ -82,7 +84,7 @@ Assign Standard if ANY of these are true (and Heavy was not triggered):
 - `ac_count > 3`
 - `touches_skill` is true
 - Issue describes a single feature with moderate complexity (judgment call based on body content)
-- `is_multi_issue` but all issues are trivial (e.g., multiple typo fixes)
+- `is_multi_issue` with mixed complexity (at least one non-trivial issue that didn't trigger Heavy)
 
 ### Light — Sonnet 4.6 / Medium effort
 
@@ -196,7 +198,7 @@ This task is done when:
 - **Issue doesn't exist or is closed:** Note it in the output and skip it. If all issues are invalid, report the error and stop.
 - **CR plan not yet available:** Include a note recommending the user wait if the issue is < 10 minutes old, or proceed without if older.
 - **No acceptance criteria in issue body:** Flag this in the output: "No acceptance criteria found — consider adding them before starting work."
-- **Multiple issues with mixed complexity:** The tier is determined by the most complex issue in the batch. A batch of 3 issues where one is Heavy makes the whole batch Heavy.
+- **Multiple issues with mixed complexity:** See the batch handling rule in Step 5 — the most complex issue determines the batch tier.
 
 ## Usage Examples
 
