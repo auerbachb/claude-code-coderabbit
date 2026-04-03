@@ -64,7 +64,7 @@ From the gathered data, compute these discrete signals:
 | `dependency_count` | Total dependency references found in Step 3. |
 | `touches_rules` | `true` if any file path matches `.claude/rules/*.md` OR issue body mentions "rule file", "workflow protocol", "CLAUDE.md". |
 | `touches_skill` | `true` if any file path matches `.claude/skills/` OR issue is about creating/modifying a skill. |
-| `ac_count` | Count of acceptance criteria checkboxes (`- [ ]`) in issue body. |
+| `ac_count` | Count of acceptance criteria checkboxes (both `- [ ]` and `- [x]`/`- [X]`) in issue body. |
 | `is_multi_issue` | `true` if more than one issue number was provided. |
 | `has_orchestration_keywords` | `true` if issue body contains: "subagent", "Phase A", "Phase B", "Phase C", "multi-phase", "orchestration", "monitor mode", "handoff". |
 | `scope_keywords` | Collect any of: "typo", "rename", "comment", "config", "doc update", "README", "formatting". |
