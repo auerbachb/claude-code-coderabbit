@@ -13,21 +13,21 @@ Parse `$ARGUMENTS` as space-separated issue references. Strip `#` prefixes to ge
 For each issue number, fetch the full issue data:
 
 ```bash
-gh issue view $NUMBER --json number,title,body,labels,milestone,assignees,createdAt
+gh issue view $NUMBER --json number,title,body,labels,milestone,assignees,createdAt,state,closedAt
 ```
 
 For each issue, extract and record:
 - **Full body content** — needed for complexity analysis (titles alone are insufficient)
 - **Labels** — check for protocol-relevant labels (e.g., "orchestration", "multi-phase", "infrastructure")
 - **Milestone** — priority and deadline context
-- **Acceptance criteria** — count checkbox items (`- [ ]`) in the body
+- **Acceptance criteria** — count all checklist items matching `- [ ]` or `- [x]`/`- [X]` in the body (both checked and unchecked count toward `ac_count`)
 
 ## Step 2: Detect CR Implementation Plan
 
 For each issue, fetch all comments (not just CR — discussion comments contain dependency and scope signals too):
 
 ```bash
-gh api repos/{owner}/{repo}/issues/$NUMBER/comments --jq '.[] | {author: .user.login, body: .body}'
+gh api --paginate repos/{owner}/{repo}/issues/$NUMBER/comments --jq '.[] | {author: .user.login, body: .body}'
 ```
 
 From all comments, extract:
@@ -96,7 +96,7 @@ Assign Standard if ANY of these are true (and Heavy was not triggered):
 ### Quick — Haiku 4.5 / Low effort
 
 Assign Quick only if ALL of these are true (evaluated before Light to prevent Light's broader conditions from preempting):
-- `scope_keywords` are exclusively from: "typo", "rename", "comment", "formatting"
+- `scope_keywords` is non-empty AND every element is exclusively from: "typo", "rename", "comment", "formatting"
 - `file_count` is 0–1
 - `ac_count` ≤ 2
 - `dependency_count` is 0
