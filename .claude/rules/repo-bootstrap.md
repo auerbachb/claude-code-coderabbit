@@ -67,8 +67,8 @@ gh api "repos/{owner}/{repo}/branches/main/protection/required_status_checks" 2>
 2. **Ask the user:** "This repo's `main` branch has no required status checks — PRs can merge with failing CI. Found checks: `lint`, `test`, `build`. Want me to enable branch protection requiring these to pass?"
 3. **If approved:**
    - Read existing protection via `gh api repos/{owner}/{repo}/branches/main/protection` (may 404).
-   - PUT to the same endpoint with `required_status_checks.contexts` set to the discovered check names and `strict: false` (or `true` for low-activity repos).
-   - Preserve `required_pull_request_reviews`, `restrictions`, and `enforce_admins` from the read; default to `null`/`false` if no prior protection exists.
+   - PUT to the same endpoint with `required_status_checks.contexts` set to the discovered check names and `strict: true` (prevents merging stale branches).
+   - Preserve all existing protection settings from the read response (merge in the updated `required_status_checks` only). If no prior protection exists (404), use sensible defaults (`enforce_admins: false`, others `null`).
 4. **If declined:** move on. Do not ask again in the same session.
 
 ### Rules
