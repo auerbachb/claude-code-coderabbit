@@ -24,13 +24,15 @@ For each issue, extract and record:
 
 ## Step 2: Detect CR Implementation Plan
 
-For each issue, check if CodeRabbit posted an implementation plan:
+For each issue, fetch all comments (not just CR — discussion comments contain dependency and scope signals too):
 
 ```bash
-gh api repos/{owner}/{repo}/issues/$NUMBER/comments --jq '.[] | select(.user.login == "coderabbitai[bot]") | .body'
+gh api repos/{owner}/{repo}/issues/$NUMBER/comments --jq '.[] | {author: .user.login, body: .body}'
 ```
 
-- Look for plan structure markers: file lists, implementation steps, phase breakdowns
+From all comments, extract:
+- **CR implementation plan:** Filter for comments by `coderabbitai[bot]` and look for plan structure markers (file lists, implementation steps, phase breakdowns)
+- **Discussion signals:** Scan non-bot comments for dependency markers, scope clarifications, and complexity context (these feed into Step 3)
 - If a CR plan exists, extract the **file list** using these patterns:
   - Look for headings containing "Files", "Files likely touched", "File list", or "Touched files" (case-insensitive)
   - Parse the block following that heading: bullet/numbered lists (`-`, `*`, `+`, or digits + `.`) or fenced code blocks with one path per line
@@ -42,8 +44,8 @@ gh api repos/{owner}/{repo}/issues/$NUMBER/comments --jq '.[] | select(.user.log
 
 ## Step 3: Detect Dependencies
 
-Scan all issue bodies (from Step 1) for dependency markers:
-- `blocked by #N`, `depends on #N`, `prerequisite for #N`, `after #N`
+Scan all issue bodies (from Step 1) AND all issue comments (from Step 2) for dependency markers:
+- `blocked by #N`, `blocks #N`, `depends on #N`, `prerequisite for #N`, `after #N`
 - `unblocks #N`, `enables #N`, `required by #N`, `before #N`
 - `Fixes #N`, `Closes #N` (indicates a PR may already be in flight)
 
