@@ -117,9 +117,22 @@ If classification is unclear, default to **Standard**. It is better to slightly 
 
 ## Step 6: Generate Output
 
-Produce the following output in Markdown. Use the gathered data to fill in each section. The output should be **copy-paste-ready** — a user can paste this directly into a new Claude Code thread.
+Produce the following output in Markdown. Use the gathered data to fill in each section. The output should be **copy-paste-ready** — a user can paste each issue's prompt directly into a new Claude Code thread as a single copyable block.
+
+### Output Structure
+
+The output has two parts:
+
+1. **Tier Recommendation** — plain text (not inside a code fence), shown once at the top
+2. **Per-issue prompt blocks** — one 4-backtick fenced block per issue, each self-contained with all context needed by the executing agent
+
+For single-issue input, there is one prompt block. For batch input, there are multiple prompt blocks, each independently copyable.
+
+**Fence nesting rule:** Outer prompt blocks use ```````` (4 backticks). Any inner code examples (bash commands, SQL, file paths, etc.) use the standard `` ``` `` (3 backticks). This ensures the outer block renders as one copyable unit in the Claude app while inner code blocks display correctly inside it.
 
 ### Output Template
+
+Output the Tier Recommendation as plain text first:
 
 ```
 ## Tier Recommendation
@@ -127,13 +140,11 @@ Produce the following output in Markdown. Use the gathered data to fill in each 
 **{TIER_NAME}** — {MODEL} / {EFFORT} effort
 
 Rationale: {1-line explanation of why this tier was selected, citing the dominant signal}
+```
 
----
+Then, for each issue, output a self-contained prompt block. Use 4-backtick fences (shown here as the outer boundary):
 
-## Issue Summary
-
-{For each issue, include:}
-
+````
 ### Issue #{NUMBER}: {TITLE}
 
 **Acceptance Criteria:**
@@ -195,12 +206,14 @@ These are mandatory verification points. The executing agent MUST follow these:
 ## Exit Criteria
 
 This task is done when:
-{For each acceptance criterion, list it as a verification item:}
+{For each acceptance criterion from THIS issue, list it as a verification item:}
 - [ ] {AC item 1 from issue body}
 - [ ] {AC item 2 from issue body}
 {...}
 - [ ] PR merged and branch deleted (if applicable)
-```
+````
+
+{Repeat the above 4-backtick block for each issue in the batch. Each block is independently copyable.}
 
 ## Edge Cases
 
