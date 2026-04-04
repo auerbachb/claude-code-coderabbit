@@ -128,7 +128,7 @@ The output has two parts:
 
 For single-issue input, there is one prompt block. For batch input, there are multiple prompt blocks, each independently copyable (i.e., self-contained with all context; this does not imply each block has its own tier). All blocks in a batch share the batch-level tier, so an individually Light issue's block may include Heavy-tier checkpoints when the batch tier is Heavy.
 
-**Fence nesting rule:** Outer prompt blocks use ```````` (4 backticks) because markdown requires n+1 backticks to contain a fence of n backticks. Any inner code examples (bash commands, SQL, file paths, etc.) use the standard `` ``` `` (3 backticks). This ensures the outer block renders as one copyable unit in the Claude app while inner code blocks display correctly inside it.
+**Fence nesting rule:** Outer prompt blocks open and close with exactly four backtick characters because markdown requires n+1 backticks to contain a fence of n backticks. Inner code examples (bash commands, SQL, file paths, etc.) use the standard three backtick characters. This ensures the outer block renders as one copyable unit in the Claude app while inner code blocks display correctly inside it.
 
 ### Output Template
 
@@ -179,7 +179,7 @@ Then, for each issue, output a self-contained prompt block. Use 4-backtick fence
 
 ---
 
-{ONLY when the tier is Heavy (whether from a single issue or batch classification) — include this section in every issue block:}
+{ONLY when the assigned tier is Heavy (for batches, this is the batch-level tier from Step 5) — include this section in every issue block:}
 ## Protocol Checkpoints
 
 These are mandatory verification points. The executing agent MUST follow these:
