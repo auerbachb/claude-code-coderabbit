@@ -74,7 +74,7 @@ From the gathered data, compute these discrete signals:
 
 Apply this decision tree. When signals conflict, choose the **higher** tier (conservative on quality).
 
-**Batch handling rule:** When multiple issues are provided, the tier is determined by the most complex issue in the batch. A batch of 3 issues where one is Heavy makes the whole batch Heavy.
+**Batch handling rule:** When multiple issues are provided, the tier is determined by the most complex issue in the batch. A batch of 3 issues where one is Heavy makes the whole batch Heavy. This means every per-issue prompt block in the batch inherits the batch-level tier — an individually Light issue will carry Heavy checkpoints if the batch tier is Heavy. This is intentional: the conservative-on-quality principle applies to the entire batch, and blocks are "independently copyable" in the sense that each is self-contained, not that each has its own tier.
 
 ### Heavy — Opus 4.6 1M / High effort
 
@@ -117,9 +117,22 @@ If classification is unclear, default to **Standard**. It is better to slightly 
 
 ## Step 6: Generate Output
 
-Produce the following output in Markdown. Use the gathered data to fill in each section. The output should be **copy-paste-ready** — a user can paste this directly into a new Claude Code thread.
+Produce the following output in Markdown. Use the gathered data to fill in each section. The output should be **copy-paste-ready** — a user can paste each issue's prompt directly into a new Claude Code thread as a single copyable block.
+
+### Output Structure
+
+The output has two parts:
+
+1. **Tier Recommendation** — plain text (not inside a code fence), shown once at the top
+2. **Per-issue prompt blocks** — one 4-backtick fenced block per issue, each self-contained with all context needed by the executing agent
+
+For single-issue input, there is one prompt block. For batch input, there are multiple prompt blocks, each independently copyable (i.e., self-contained with all context; this does not imply each block has its own tier). All blocks in a batch share the batch-level tier, so an individually Light issue's block may include Heavy-tier checkpoints when the batch tier is Heavy.
+
+**Fence nesting rule:** Outer prompt blocks open and close with exactly four backtick characters because markdown requires n+1 backticks to contain a fence of n backticks. Inner code examples (bash commands, SQL, file paths, etc.) use the standard three backtick characters. This ensures the outer block renders as one copyable unit in the Claude app while inner code blocks display correctly inside it.
 
 ### Output Template
+
+Output the Tier Recommendation as plain text first:
 
 ```
 ## Tier Recommendation
@@ -127,13 +140,11 @@ Produce the following output in Markdown. Use the gathered data to fill in each 
 **{TIER_NAME}** — {MODEL} / {EFFORT} effort
 
 Rationale: {1-line explanation of why this tier was selected, citing the dominant signal}
+```
 
----
+Then, for each issue, output a self-contained prompt block. Use 4-backtick fences (shown here as the outer boundary):
 
-## Issue Summary
-
-{For each issue, include:}
-
+````
 ### Issue #{NUMBER}: {TITLE}
 
 **Acceptance Criteria:**
@@ -168,7 +179,7 @@ Rationale: {1-line explanation of why this tier was selected, citing the dominan
 
 ---
 
-{ONLY for Heavy tier — include this section:}
+{ONLY when the assigned tier is Heavy (for batches, this is the batch-level tier from Step 5) — include this section in every issue block:}
 ## Protocol Checkpoints
 
 These are mandatory verification points. The executing agent MUST follow these:
@@ -195,12 +206,14 @@ These are mandatory verification points. The executing agent MUST follow these:
 ## Exit Criteria
 
 This task is done when:
-{For each acceptance criterion, list it as a verification item:}
+{For each acceptance criterion from THIS issue, list it as a verification item:}
 - [ ] {AC item 1 from issue body}
 - [ ] {AC item 2 from issue body}
 {...}
 - [ ] PR merged and branch deleted (if applicable)
-```
+````
+
+{Repeat the above 4-backtick block for each issue in the batch. Each block is independently copyable.}
 
 ## Edge Cases
 
